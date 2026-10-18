@@ -17,6 +17,32 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
   where practical. Improve the existing Python/PyQt structure incrementally;
   avoid a broad architecture rewrite during a bug fix.
 
+## UI redesign contract
+
+- Redesign all core game flows: Home, Library, discovery and install, Game
+  Details, queue/activity, onboarding, and confirmations. Settings, Credits,
+  and Easter eggs are out of scope unless the user explicitly asks otherwise.
+- Keep Game Library as a separate window. Preserve existing manager APIs,
+  dialog entry points, game operations, and task semantics while improving
+  presentation and navigation.
+- Build the discover-to-install journey as one guided sequence: find or import,
+  choose build and depots, choose storage and backend, then review and queue.
+  Existing direct actions must open at their relevant step.
+- Support both Steam Deck Desktop Mode and Gaming Mode. At 1280x800 and
+  1280x720, controls must remain readable and reachable; avoid fixed screen
+  layouts that clip content. Keyboard, touch, mouse, trackpad, and controller
+  navigation all remain supported.
+- Use a visible focus ring, deterministic initial focus, focus restoration when
+  a dialog closes, and Escape/B as Back. Do not use mouse-only cards or actions.
+- Keep all slow discovery, artwork, metadata, and network work out of the UI
+  thread. Retain visible data while refreshing and present errors with a retry.
+- Keep shared UI primitives in `src/ui/deck_ui/`; feature screens compose them
+  from `presentation`, `domain`, and `data` modules rather than adding another
+  global stylesheet or duplicating style strings.
+- The Mac mock must use the production widgets with injected in-memory data. It
+  must not open Steam, contact services, modify user settings, install anything,
+  or start a local server.
+
 ## Fork boundaries
 
 - `origin` is this fork; `upstream` is `niwia/ASSella`. Merge upstream changes

@@ -168,6 +168,7 @@ class MainWindow(QMainWindow):
         self.drop_text_label = None
         self.active_hubcap_label = None
         self.dashboard_widget = None
+        self.home_overview = None
         self.usage_value = None
         self.expiry_value = None
         self.update_all_btn = None
@@ -208,6 +209,14 @@ class MainWindow(QMainWindow):
         self._setup_window_properties()
         self._initialize_managers()
         self._setup_ui()
+        self.game_manager.library_updated.connect(
+            lambda: QTimer.singleShot(0, self._sync_home_overview),
+            Qt.ConnectionType.QueuedConnection,
+        )
+        self.game_manager.all_updates_checked.connect(
+            lambda: QTimer.singleShot(0, self._sync_home_overview),
+            Qt.ConnectionType.QueuedConnection,
+        )
         
         # Connect update progress signals after UI is initialized
         self.game_manager.update_check_progress.connect(
@@ -939,6 +948,18 @@ class MainWindow(QMainWindow):
 
         self.drop_text_label = DropTextLabelWrapper(self.status_pager)
 
+        # Action-first Home surface. The legacy dashboard below remains the
+        # source for detailed service status while the redesign is introduced
+        # incrementally.
+        from ui.deck_ui import DeckHomeOverview
+        self.home_overview = DeckHomeOverview(
+            open_library=self.open_game_library,
+            find_game=self.open_fetch_dialog,
+            open_activity=self.open_status_dialog,
+            refresh_updates=self.force_check_all_updates,
+            parent=self.drop_zone_container,
+        )
+
         # Dashboard container widget
         self.dashboard_widget = QWidget()
         self.dashboard_widget.setObjectName("dashboard_widget")
@@ -1105,6 +1126,7 @@ class MainWindow(QMainWindow):
         row2_layout.addStretch()
         dash_main_layout.addLayout(row2_layout)
         
+        self.drop_zone_layout.addWidget(self.home_overview)
         self.drop_zone_layout.addWidget(self.status_pager)
         self.drop_zone_layout.addWidget(self.dashboard_widget, 2)
         self.main_layout.addWidget(self.drop_zone_container, 1)
@@ -1530,6 +1552,28 @@ class MainWindow(QMainWindow):
                 total_bytes = stats.get("total_size", 0)
                 total_gb = total_bytes / 1_073_741_824
                 self.library_size_value.setText(f"{total_gb:.1f} GB ({total_games} games)")
+
+        self._sync_home_overview()
+
+    def _sync_home_overview(self) -> None:
+        """Mirror live state into the redesigned Home summary without new I/O."""
+        if not self.home_overview:
+            return
+        library = self.library_size_value.text() if self.library_size_value else "Library loading"
+        updates = self.steam_updates_value.text() if self.steam_updates_value else "Checking updates"
+        activity = "No active download"
+        if getattr(self.task_manager, "is_processing", False):
+            activity = "A game task is in progress"
+        storage = self.steam_conn_value.text() if getattr(self, "steam_conn_value", None) else "Checking Steam"
+        from ui.deck_ui.home import HomeSnapshot
+        self.home_overview.apply_snapshot(
+            HomeSnapshot(
+                library_summary=library,
+                updates_summary=updates,
+                activity_summary=activity,
+                storage_summary=f"Steam: {storage}",
+            )
+        )
 
     def rotate_quote(self):
         if not hasattr(self, "quote_label") or not self.quote_label:
