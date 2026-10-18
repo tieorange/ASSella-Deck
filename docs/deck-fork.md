@@ -14,7 +14,7 @@ git switch -c integrate/upstream-YYYYMMDD
 git merge --no-ff upstream/beta
 ```
 
-Resolve conflicts on the integration branch. Run the normal CI checks and test
+Resolve conflicts on the integration branch. Run the local checks and test
 the library on a Deck before merging into `deck/beta` through a pull request.
 Keep the merge commit so the common ancestry is available next time. Do not
 force-push `deck/beta`.
