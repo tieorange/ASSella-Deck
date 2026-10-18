@@ -26,3 +26,6 @@ Steam Deck hardware timing, AppImage install and rollback, and binary
 redistribution checks are still pending. No modified AppImage has been released.
 
 Original ASSella installation guide: https://yeet.md/s/g6jhSh-M
+
+Contributing with an AI coding agent? Start with [AGENTS.md](AGENTS.md) and the
+[agent guide](docs/agent-guide.md).
