@@ -1,7 +1,7 @@
 """Plugin Manager for on-demand SLSsteam Lua plugin distribution from Cloudflare R2.
 
 Handles fetching plugins_manifest.json, validating SHA-256 hashes, downloading
-on-demand to local cache (~/.local/share/ACCELA/plugins), and deploying into
+on-demand to local cache (~/.local/share/ASSella-Deck/plugins), and deploying into
 active SLSsteam plugin directories with automatic .bak backup preservation.
 """
 
@@ -349,13 +349,11 @@ def deploy_plugin(filename: str, force_download: bool = False, only_if_missing: 
         # Check if file exists in local plugins cache or known local paths first
         alt_locations = [
             get_base_path() / "plugins" / filename,
-            Path.home() / ".local" / "share" / "ACCELA" / "plugins" / filename,
             Path.home() / ".config" / "SLSsteam" / "plugins" / filename,
         ]
         # Also check for spacebunnny spelling variations if looking for spacebunny
         if filename == "spacebunny1.5.lua":
             alt_locations.extend([
-                Path.home() / ".local" / "share" / "ACCELA" / "plugins" / "spacebunnny1.5.lua",
                 Path.home() / ".config" / "SLSsteam" / "plugins" / "spacebunnny1.5beta.lua",
             ])
 

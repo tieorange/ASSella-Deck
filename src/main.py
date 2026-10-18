@@ -7,6 +7,7 @@ import ctypes
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import QApplication
 from utils.paths import Paths
+from utils.fork_identity import APP_DISPLAY_NAME, DESKTOP_FILE_NAME
 from PyQt6.QtCore import QTimer
 from ui.main_window import MainWindow
 from ui.theme import update_appearance
@@ -32,7 +33,7 @@ def set_app_user_model_id():
     """Set the AppUserModelID for Windows to ensure correct taskbar grouping."""
     if sys.platform == "win32":
         try:
-            my_app_id = "god.is.in.the.wired.accela"
+            my_app_id = "io.github.tieorange.assella_deck"
             # noinspection PyUnresolvedReferences
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(my_app_id)
         except (ImportError, AttributeError):
@@ -103,8 +104,8 @@ def main():
     # People only have substance within the memories of other people.
 
     app = QApplication(sys.argv)
-    app.setApplicationName("ASSella")
-    app.setDesktopFileName("assella")
+    app.setApplicationName(APP_DISPLAY_NAME)
+    app.setDesktopFileName(DESKTOP_FILE_NAME.removesuffix(".desktop"))
 
     # Eagerly initialize the main-thread dispatch bridge so background tasks
     # can safely post to the GUI event loop.
@@ -169,7 +170,7 @@ def main():
             logger.error(f"Failed to parse URL {url}: {ve}")
 
     settings = get_settings()
-    server_port = int(settings.value("web_ui_port", 8765, type=int))
+    server_port = int(settings.value("web_ui_port", 8766, type=int))
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -251,41 +252,43 @@ def main():
     # GUI Mode Initialization
     # -------------------------------------------------------------------------
 
-    config_path = get_user_config_path()
-    try:
-        backup_created = backup_config_on_startup(config_path)
-        if backup_created:
-            logger.info("SLSsteam config backup created at startup")
+    # Shared SLSsteam config is left unchanged on fork startup by default.
+    if settings.value("fork_automatic_shared_config_maintenance", False, type=bool):
+        config_path = get_user_config_path()
+        try:
+            backup_created = backup_config_on_startup(config_path)
+            if backup_created:
+                logger.info("SLSsteam config backup created at startup")
 
-        if config_path.exists():
-            ensure_slssteam_prerequisites(config_path)
+            if config_path.exists():
+                ensure_slssteam_prerequisites(config_path)
 
-            # config.yaml holds every depot decryption key the user owns.
-            # Older versions left it world-readable; tighten existing installs.
-            try:
-                from utils.yaml_config_manager import harden_existing_config_permissions
-                harden_existing_config_permissions(config_path)
-            except Exception as ex:
-                logger.debug(f"Could not harden config permissions: {ex}")
+                # config.yaml holds every depot decryption key the user owns.
+                # Older versions left it world-readable; tighten existing installs.
+                try:
+                    from utils.yaml_config_manager import harden_existing_config_permissions
+                    harden_existing_config_permissions(config_path)
+                except Exception as ex:
+                    logger.debug(f"Could not harden config permissions: {ex}")
             
-            try:
-                from utils.yaml_config_manager import check_and_merge_fakeappid_db
-                check_and_merge_fakeappid_db(config_path)
-            except Exception as ex:
-                logger.error(f"Failed to check and merge Fake AppID database: {ex}")
+                try:
+                    from utils.yaml_config_manager import check_and_merge_fakeappid_db
+                    check_and_merge_fakeappid_db(config_path)
+                except Exception as ex:
+                    logger.error(f"Failed to check and merge Fake AppID database: {ex}")
 
-            try:
-                from utils.yaml_config_manager import get_fake_appid, add_fake_app_id
-                all_on = settings.value("all_games_online", None)
-                if all_on is None:
-                    all_on = settings.value("all_games_online_beta", None)
-                if all_on is None or bool(all_on):
-                    if get_fake_appid(config_path, "0") is None:
-                        add_fake_app_id(config_path, "0", game_name="All Unowned Apps", fake_appid="480")
-            except Exception as ex:
-                logger.debug(f"Failed to ensure all_games_online FakeAppId: {ex}")
-    except OSError as e:
-        logger.error(f"Startup I/O error (Config/Backup): {e}")
+                try:
+                    from utils.yaml_config_manager import get_fake_appid, add_fake_app_id
+                    all_on = settings.value("all_games_online", None)
+                    if all_on is None:
+                        all_on = settings.value("all_games_online_beta", None)
+                    if all_on is None or bool(all_on):
+                        if get_fake_appid(config_path, "0") is None:
+                            add_fake_app_id(config_path, "0", game_name="All Unowned Apps", fake_appid="480")
+                except Exception as ex:
+                    logger.debug(f"Failed to ensure all_games_online FakeAppId: {ex}")
+        except OSError as e:
+            logger.error(f"Startup I/O error (Config/Backup): {e}")
 
     # 2. Settings & Theme
     settings = get_settings()

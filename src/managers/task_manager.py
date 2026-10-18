@@ -25,6 +25,7 @@ except ImportError:
 from core import steam_helpers
 
 from utils.steam_manifest import get_game_directory
+from utils.helpers import get_base_path
 from utils.yaml_config_manager import is_slssteam_mode_enabled
 
 from utils.task_runner import TaskRunner
@@ -562,7 +563,7 @@ class TaskManager(
                 libraries = steam_helpers.get_steam_libraries()
                 if libraries:
                     return libraries[0]
-                default_dir = os.path.expanduser("~/.local/share/ACCELA/downloads")
+                default_dir = str(get_base_path() / "downloads")
                 os.makedirs(default_dir, exist_ok=True)
                 return default_dir
             return ThemedFileDialog.getExistingDirectory(
@@ -598,7 +599,7 @@ class TaskManager(
             from_web = current_job_metadata.get("from_web_ui", False)
             is_headless = os.environ.get("QT_QPA_PLATFORM") == "offscreen" or (self.main_window and not self.main_window.isVisible())
             if from_web or is_headless:
-                default_dir = os.path.expanduser("~/.local/share/ACCELA/downloads")
+                default_dir = str(get_base_path() / "downloads")
                 os.makedirs(default_dir, exist_ok=True)
                 return default_dir
             from ui.dialogs.themed_message_box import ThemedMessageBox

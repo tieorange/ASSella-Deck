@@ -39,8 +39,9 @@ BUILTIN_THEMES: Dict[str, Dict[str, Any]] = {
 
 
 def get_user_themes_dir() -> Path:
-    """Returns ~/.local/share/ACCELA/themes/ ensuring it exists."""
-    themes_dir = Path(os.path.expanduser("~/.local/share/ACCELA/themes"))
+    """Returns ~/.local/share/ASSella-Deck/themes/ ensuring it exists."""
+    from utils.helpers import get_base_path
+    themes_dir = get_base_path() / "themes"
     try:
         themes_dir.mkdir(parents=True, exist_ok=True)
         # Ensure a friendly template exists
@@ -61,7 +62,7 @@ def get_user_themes_dir() -> Path:
 
 
 def load_all_themes() -> Dict[str, Dict[str, Any]]:
-    """Loads all builtin themes + custom JSON themes from ~/.local/share/ACCELA/themes/."""
+    """Loads all builtin themes + custom JSON themes from ~/.local/share/ASSella-Deck/themes/."""
     themes = dict(BUILTIN_THEMES)
     themes_dir = get_user_themes_dir()
 

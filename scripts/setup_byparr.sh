@@ -17,7 +17,7 @@ echo "=== ASSella: Setting up Byparr Cloudflare Solver (Experimental) ==="
 echo "Credits: Byparr by ThePhaseless (https://github.com/ThePhaseless/Byparr)"
 echo ""
 
-DATA_DIR="$HOME/.local/share/ACCELA"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ASSella-Deck"
 BYPARR_DIR="$DATA_DIR/byparr"
 LOCAL_BIN="$HOME/.local/bin"
 

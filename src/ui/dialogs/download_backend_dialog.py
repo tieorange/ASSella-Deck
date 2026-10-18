@@ -340,11 +340,10 @@ class DownloadBackendDialog(QDialog):
         self._update_cards_ui()
 
     def _load_logo(self, filename: str) -> QPixmap:
-        """Load logo from bundled src/res/logo or ~/.local/share/ACCELA/Logo."""
+        """Load logo from bundled src/res/logo or ~/.local/share/ASSella-Deck/Logo."""
         candidates = [
             Path(__file__).resolve().parent.parent.parent / "res" / "logo" / filename,
             get_base_path() / "Logo" / filename,
-            Path.home() / ".local/share/ACCELA/Logo" / filename,
         ]
         for c in candidates:
             if c.is_file():

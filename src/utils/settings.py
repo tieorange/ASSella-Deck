@@ -4,10 +4,11 @@ import threading
 from pathlib import Path
 from typing import Any
 from PyQt6.QtCore import QSettings
+from utils.fork_identity import APP_DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "ACCELA"
+APP_NAME = APP_DATA_DIR
 ORG_NAME = "Tachibana Labs"
 
 _settings_local = threading.local()

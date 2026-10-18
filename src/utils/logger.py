@@ -12,9 +12,10 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from utils.activity import is_our_logger
 from utils.helpers import get_base_path
+from utils.fork_identity import APP_ID
 
 # Constants
-APP_NAME = "assella"
+APP_NAME = APP_ID
 MAX_PREVIOUS_LOGS = 3
 
 logger = logging.getLogger(__name__)

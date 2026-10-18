@@ -518,7 +518,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 class WebServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, main_window, web_command_queue, host=DEFAULT_HOST, port=8765, auth_token=""):
+    def __init__(self, main_window, web_command_queue, host=DEFAULT_HOST, port=8766, auth_token=""):
         self.main_window = main_window
         self.web_command_queue = web_command_queue
         self.host = host
@@ -539,7 +539,7 @@ class WebServerManager:
     def auth_token(self) -> str:
         return getattr(self.server, "auth_token", "") if self.server else ""
 
-    def start(self, host=DEFAULT_HOST, port=8765):
+    def start(self, host=DEFAULT_HOST, port=8766):
         if self.server:
             logger.warning("Web server is already running.")
             return False

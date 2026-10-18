@@ -619,7 +619,7 @@ class LuaToolsAPI:
         appid: str | int,
         progress_cb: Optional[Callable[[int, int], None]] = None,
     ) -> Tuple[Optional[Path], Optional[str]]:
-        """Resolve and download the fix zip to local cache (~/.local/share/ACCELA/luatools/fixes/)."""
+        """Resolve and download the fix zip to local cache (~/.local/share/ASSella-Deck/luatools/fixes/)."""
         target_file = _get_fixes_cache_dir() / f"{appid}_{fix_id}.zip"
         if target_file.exists() and target_file.stat().st_size > 1024:
             logger.info(f"[LuaTools] Found cached fix archive: {target_file}")

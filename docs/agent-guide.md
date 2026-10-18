@@ -11,6 +11,7 @@ Steam Deck changes; `beta` mirrors upstream. Keep changes small so upstream
 | Installed-games discovery and cache | `src/managers/game_manager.py`, `src/core/steam_helpers.py`, `src/utils/games_cache.py` |
 | Library UI and artwork | `src/ui/dialogs/gamelibrary.py`, `src/ui/dialogs/library/` |
 | Fork release routing | `src/utils/release_source.py`, `install.sh`, `.github/workflows/build-appimage.yml` |
+| Side-by-side app identity | `src/utils/fork_identity.py`, `src/utils/helpers.py`, `src/utils/settings.py` |
 | Focused Deck regressions | `scripts/test_deck_library.py` |
 
 For library behavior and failure cases, read [deck-library.md](deck-library.md).
@@ -24,6 +25,8 @@ tests need PyQt6 and psutil. On a headless Linux environment set
 
 ```bash
 python scripts/test_deck_library.py
+python scripts/test_side_by_side_install.py
+python scripts/test_fork_runtime_identity.py
 python scripts/check_silent_exceptions.py
 python -m compileall -q src
 bash -n install.sh

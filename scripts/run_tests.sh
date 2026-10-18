@@ -1,17 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-
-echo "=== Running ASSella Pre-Release Test Suite against Source ==="
-PYTHONPATH="$REPO_ROOT/src" python3 "$SCRIPT_DIR/prerelease_check.py"
-
-ACCELA_HOME="${ACCELA_HOME:-$HOME/.local/share/ACCELA}"
-APPIMAGE_PATH="$ACCELA_HOME/ASSella.AppImage"
-SQUASH_SRC="$ACCELA_HOME/squashfs-root/bin/src"
-
-if [ -d "$SQUASH_SRC" ]; then
-    echo "=== Running ASSella Pre-Release Test Suite against Extracted AppImage ==="
-    PYTHONPATH="$SQUASH_SRC" python3 "$SCRIPT_DIR/prerelease_check.py" --src "$SQUASH_SRC"
-fi
+# The upstream pre-release suite still references ACCELA's data directory.
+# Running it from a side-by-side fork could inspect or modify the other app.
+echo "The upstream pre-release suite is disabled until its paths are isolated." >&2
+echo "Run scripts/test_deck_library.py, scripts/test_side_by_side_install.py," >&2
+echo "and scripts/test_fork_runtime_identity.py with the required dependencies." >&2
+exit 2

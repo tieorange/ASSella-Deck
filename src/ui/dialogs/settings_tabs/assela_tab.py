@@ -395,8 +395,8 @@ def create_assela_tab(dialog) -> QWidget:
 
     # ── Uninstall (Linux only) ────────────────────────────────────────
     if sys.platform != "win32":
-        uninstall_btn = QPushButton("Uninstall ASSella")
-        uninstall_btn.setToolTip("Remove ASSella and optionally restore the original ACCELA.")
+        uninstall_btn = QPushButton("Uninstall ASSella Deck")
+        uninstall_btn.setToolTip("Remove this fork's launcher and AppImages; keep its data and other apps.")
 
         accent_color = dialog.settings.value("accent_color", "#C06C84")
         from utils.color_utils import get_semantic_colors
@@ -522,83 +522,44 @@ def handle_gateway_test_done(dialog, data) -> None:
 
 
 def uninstall_assela(dialog) -> None:
-    """Remove ASSella and optionally restore the original ACCELA backup."""
-    install_dir = os.path.expanduser("~/.local/share/ACCELA")
-    assela_path = os.path.join(install_dir, "ASSella.AppImage")
-    symlink_path = os.path.join(install_dir, "ACCELA.AppImage")
-    backup_path = os.path.join(install_dir, "ACCELA.AppImage.bak")
-    desktop_entry = os.path.expanduser("~/.local/share/applications/accela.desktop")
-    has_backup = os.path.isfile(backup_path)
+    """Remove only this fork's launcher and AppImages, preserving user data."""
+    from pathlib import Path
+    from utils.helpers import get_base_path
+    from utils.fork_identity import APPIMAGE_NAME, DESKTOP_FILE_NAME, ICON_NAME
+
+    install_dir = get_base_path()
+    data_home = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
+    if install_dir.is_symlink():
+        ThemedMessageBox.warning(dialog, "Uninstall", "The fork data directory is a symlink. Nothing was removed.")
+        return
 
     reply = ThemedMessageBox.question(
         dialog,
-        "Uninstall ASSella",
-        "This will remove ASSella and revert the desktop shortcut to ACCELA.\n\nAre you sure?",
+        "Uninstall ASSella Deck",
+        "Remove only ASSella Deck's AppImages and launcher? Fork data will be kept.",
         ThemedMessageBox.StandardButton.Yes | ThemedMessageBox.StandardButton.No,
     )
     if reply != ThemedMessageBox.StandardButton.Yes:
         return
 
-    restore = False
-    if has_backup:
-        restore_reply = ThemedMessageBox.question(
-            dialog,
-            "Restore Original ACCELA?",
-            "A backup of the original ACCELA (ACCELA.AppImage.bak) was found.\n\n"
-            "Would you like to restore it after uninstalling ASSella?",
-            ThemedMessageBox.StandardButton.Yes | ThemedMessageBox.StandardButton.No,
-        )
-        restore = restore_reply == ThemedMessageBox.StandardButton.Yes
-
     errors = []
-
-    if os.path.islink(symlink_path):
+    owned_files = (
+        install_dir / APPIMAGE_NAME,
+        install_dir / f"{APPIMAGE_NAME}.previous",
+        install_dir / "version",
+        install_dir / "version.previous",
+        data_home / "applications" / DESKTOP_FILE_NAME,
+        data_home / "icons/hicolor/256x256/apps" / f"{ICON_NAME}.png",
+    )
+    for path in owned_files:
         try:
-            os.remove(symlink_path)
+            path.unlink(missing_ok=True)
         except OSError as e:
-            errors.append(f"Could not remove symlink: {e}")
-
-    if os.path.isfile(assela_path):
-        try:
-            os.remove(assela_path)
-        except OSError as e:
-            errors.append(f"Could not remove ASSella.AppImage: {e}")
-
-    cache_dir = os.path.join(install_dir, "image_cache")
-    if os.path.exists(cache_dir):
-        try:
-            shutil.rmtree(cache_dir)
-        except OSError as e:
-            errors.append(f"Could not remove image cache directory: {e}")
-
-    if restore:
-        try:
-            shutil.copy2(backup_path, symlink_path)
-            os.chmod(symlink_path, 0o755)
-        except OSError as e:
-            errors.append(f"Could not restore ACCELA backup: {e}")
-
-    if os.path.isfile(desktop_entry):
-        try:
-            with open(desktop_entry, "r") as f:
-                content = f.read()
-            content = content.replace("Name=ASSella", "Name=ACCELA")
-            with open(desktop_entry, "w") as f:
-                f.write(content)
-            try:
-                subprocess.run(
-                    ["update-desktop-database", os.path.dirname(desktop_entry)],
-                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
-            except Exception:
-                pass
-        except OSError as e:
-            errors.append(f"Could not update desktop entry: {e}")
+            errors.append(f"Could not remove {path}: {e}")
 
     if errors:
         ThemedMessageBox.warning(dialog, "Uninstall — Partial", "\n".join(errors))
     else:
-        msg = "ASSella has been uninstalled."
-        if restore:
-            msg += "\nOriginal ACCELA has been restored."
-        ThemedMessageBox.information(dialog, "Done", msg)
+        ThemedMessageBox.information(
+            dialog, "Done", "ASSella Deck was removed. ACCELA and ASSella were untouched."
+        )

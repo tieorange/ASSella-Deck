@@ -97,7 +97,6 @@ def hubcap_zip_candidates(app_id) -> List[Path]:
     appid_str = str(app_id)
     return [
         Path(get_base_path()) / "hubcap_manifests" / f"accela_fetch_{appid_str}.zip",
-        Path.home() / ".local/share/ACCELA/hubcap_manifests" / f"accela_fetch_{appid_str}.zip",
     ]
 
 

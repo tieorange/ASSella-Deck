@@ -26,6 +26,10 @@ release URLs would silently replace this build during an update. The installer
 intentionally fails when this fork has no release instead of falling back to
 upstream binaries.
 
+Also check [side-by-side installation](install.md) after each upstream merge:
+no ACCELA/ASSella AppImage, desktop entry, icon, settings, or data path may be
+written by this fork's installer, updater, or uninstaller.
+
 ## Deck acceptance checklist
 
 - Record cold and warm library scan durations in Desktop Mode, with games on

@@ -91,26 +91,6 @@ def create_tools_tab(dialog) -> QWidget:
     tools_layout.addLayout(tools_btn_row)
     layout.addWidget(tools_card)
 
-    # Windows Registry Card
-    if sys.platform == "win32":
-        reg_card, reg_layout = dialog._create_card_frame("Windows Registry")
-
-        add_tool_button(
-            reg_layout,
-            "Register Registry Entries",
-            "Register accela:// URL protocol and .zip context menu entries.",
-            register_registry_entries,
-        )
-
-        add_tool_button(
-            reg_layout,
-            "Remove Registry Entries",
-            "Remove accela:// URL protocol and .zip context menu entries.",
-            remove_registry_entries,
-        )
-
-        layout.addWidget(reg_card)
-
     # Logging Configuration Card
     log_card, log_layout = dialog._create_card_frame("Logging Configuration")
 

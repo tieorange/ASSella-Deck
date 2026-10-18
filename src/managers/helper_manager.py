@@ -14,6 +14,7 @@ from core.tasks.download_depots_task import DownloadDepotsTask
 from managers.cli_manager import CLITaskManager
 from core.steam_helpers import get_steam_libraries
 from utils.settings import get_settings
+from utils.helpers import get_base_path
 
 
 def run_headless_helper(app_id: int, logger: logging.Logger):
@@ -141,7 +142,7 @@ def run_headless_helper(app_id: int, logger: logging.Logger):
             dest_path = libraries[0]
             logger.info(f"No existing installation found. Defaulting to main Steam library: {dest_path}")
         else:
-            dest_path = os.path.expanduser("~/.local/share/ACCELA/downloads")
+            dest_path = str(get_base_path() / "downloads")
             os.makedirs(dest_path, exist_ok=True)
             logger.info(f"No Steam libraries found. Saving to fallback path: {dest_path}")
 

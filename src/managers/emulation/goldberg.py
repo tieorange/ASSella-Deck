@@ -313,7 +313,7 @@ class GoldbergMixin:
                 continue
     def _copy_goldberg_common_files(self, target_dir: str, goldberg_src: Path):
         """Copy steam_settings folder.
-        Checks for custom user template in ~/.local/share/ACCELA/steam_settings,
+        Checks for custom user template in ~/.local/share/ASSella-Deck/steam_settings,
         otherwise falls back to bundled Goldberg steam_settings.
         """
         user_custom_settings = Path(get_base_path()) / "steam_settings"

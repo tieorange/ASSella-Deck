@@ -44,6 +44,7 @@ from utils.settings import get_settings
 from utils.task_runner import TaskRunner
 from datetime import datetime, timezone
 from utils.version import app_version
+from utils.fork_identity import APP_DISPLAY_NAME, SYSTEMD_SERVICE_NAME
 
 from utils.release_source import releases_api_url, version_url
 
@@ -231,7 +232,7 @@ class MainWindow(QMainWindow):
         # Start Web Server on startup if enabled
         enable_web_ui = self.settings.value("enable_remote_web_ui", False, type=bool)
         if enable_web_ui:
-            port = self.settings.value("web_ui_port", 8765, type=int)
+            port = self.settings.value("web_ui_port", 8766, type=int)
             self.toggle_web_server(True, port=port)
         else:
             self._update_web_ui_status_label()
@@ -246,15 +247,20 @@ class MainWindow(QMainWindow):
             self.check_steamdb_status()
         except Exception:
             pass
+
+        auto_maintenance = self.settings.value(
+            "fork_automatic_shared_config_maintenance", False, type=bool
+        )
         
         def run_boot_checks():
-            try:
-                from utils.slssteam_integration import check_slssteam_binary_is_latest
-                check_slssteam_binary_is_latest()
-            except Exception as e:
-                logger.debug(f"SLS binary boot version check skipped/failed: {e}")
-            run_boot_update_check()
-            run_boot_config_check()
+            if auto_maintenance:
+                try:
+                    from utils.slssteam_integration import check_slssteam_binary_is_latest
+                    check_slssteam_binary_is_latest()
+                except Exception as e:
+                    logger.debug(f"SLS binary boot version check skipped/failed: {e}")
+                run_boot_update_check()
+                run_boot_config_check()
 
             # Queue ProtonDB prefetch for all installed games, just before Denuvo sync.
             # This runs in background (worker threads) so it never blocks startup.
@@ -272,18 +278,19 @@ class MainWindow(QMainWindow):
                 logger.debug(f"ProtonDB boot prefetch failed: {e}")
 
             # Run Denuvo cache prefetch and clean SLS config of any accidental blocklists (runs ONCE on v2.5.5 launch)
-            try:
-                from core.ratings import sync_denuvo_cache_and_config
-                if self.settings and not self.settings.value("denuvo_config_cleaned_v255", False, type=bool):
-                    from utils.yaml_config_manager import get_user_config_path, clean_denuvo_games_section
-                    cfg = get_user_config_path()
-                    if cfg and cfg.exists():
-                        clean_denuvo_games_section(cfg)
-                    self.settings.setValue("denuvo_config_cleaned_v255", True)
-                    logger.info("Executed one-time SLS Denuvo blocklist cleanup for v2.5.5")
-                sync_denuvo_cache_and_config(main_window=self, force=False)
-            except Exception as e:
-                logger.debug(f"Denuvo boot prefetch skipped/failed: {e}")
+            if auto_maintenance:
+                try:
+                    from core.ratings import sync_denuvo_cache_and_config
+                    if not self.settings.value("denuvo_config_cleaned_v255", False, type=bool):
+                        from utils.yaml_config_manager import get_user_config_path, clean_denuvo_games_section
+                        cfg = get_user_config_path()
+                        if cfg and cfg.exists():
+                            clean_denuvo_games_section(cfg)
+                        self.settings.setValue("denuvo_config_cleaned_v255", True)
+                        logger.info("Executed one-time SLS Denuvo blocklist cleanup for v2.5.5")
+                    sync_denuvo_cache_and_config(main_window=self, force=False)
+                except Exception as e:
+                    logger.debug(f"Denuvo boot prefetch skipped/failed: {e}")
 
             # Safely refresh system status labels on the main window dashboard
             self.refresh_system_status_signal.emit()
@@ -419,7 +426,7 @@ class MainWindow(QMainWindow):
 
     def _setup_window_properties(self) -> None:
         """Configure basic window properties."""
-        self.setWindowTitle("ASSELA")
+        self.setWindowTitle(APP_DISPLAY_NAME)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setGeometry(100, 100, 800, 350)
 
@@ -562,7 +569,7 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.error(f"Error processing web command: {e}")
 
-    def toggle_web_server(self, enabled: bool, port: int = 8765) -> None:
+    def toggle_web_server(self, enabled: bool, port: int = 8766) -> None:
         if enabled:
             if not self.web_server_manager.is_running():
                 # Loopback by default; LAN binding is an explicit opt-in.
@@ -580,7 +587,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "web_ui_status_value") or not self.web_ui_status_value:
             return
         
-        port = self.settings.value("web_ui_port", 8765, type=int)
+        port = self.settings.value("web_ui_port", 8766, type=int)
         allow_lan = self.settings.value("web_ui_allow_lan", False, type=bool)
         
         # 1. Check if the local web server manager is running in this GUI instance
@@ -609,7 +616,7 @@ class MainWindow(QMainWindow):
             try:
                 import subprocess
                 res = subprocess.run(
-                    ["systemctl", "--user", "is-active", "assella-testing.service"],
+                    ["systemctl", "--user", "is-active", SYSTEMD_SERVICE_NAME],
                     capture_output=True,
                     text=True,
                 )

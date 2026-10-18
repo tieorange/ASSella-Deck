@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ASSella Deck
+Comment=Steam Deck game library and depot manager
+Exec=/usr/bin/assella-deck %U
+Icon=assella-deck
+Terminal=false
+Categories=Utility;Game;
+StartupWMClass=ASSella Deck

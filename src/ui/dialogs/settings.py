@@ -120,7 +120,8 @@ class SettingsDialog(QDialog):
         self._original_remember_origins = self.settings.value("remember_origins", False, type=bool)
         self._original_simplify_denuvo_status = self.settings.value("simplify_denuvo_status", False, type=bool)
         if self._original_remember_origins:
-            gif_path = os.path.expanduser("~/.local/share/ACCELA/jumpscare/lain.gif")
+            from utils.helpers import get_base_path
+            gif_path = str(get_base_path() / "jumpscare/lain.gif")
             if os.path.exists(gif_path):
                 self._origins_movie = QMovie(gif_path)
                 self._origins_movie.frameChanged.connect(self.update)
@@ -962,7 +963,7 @@ class SettingsDialog(QDialog):
         # Remote Web UI toggle
         old_web_ui = self.settings.value("enable_remote_web_ui", False, type=bool)
         new_web_ui = self.remote_web_ui_checkbox.isChecked() if self.remote_web_ui_checkbox is not None else False
-        old_port = self.settings.value("web_ui_port", 8765, type=int)
+        old_port = self.settings.value("web_ui_port", 8766, type=int)
         new_port = self.web_ui_port_spinbox.value() if hasattr(self, "web_ui_port_spinbox") and self.web_ui_port_spinbox is not None else old_port
 
         self.settings.setValue("enable_remote_web_ui", new_web_ui)

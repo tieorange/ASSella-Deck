@@ -135,38 +135,31 @@ jobs:
           mkdir -p AppDir/bin
           
           # 1. Desktop Entry & Icon
-          cat << 'EOF' > AppDir/assella.desktop
+          cat << 'EOF' > AppDir/assella-deck.desktop
           [Desktop Entry]
-          Name=ASSella
+          Name=ASSella Deck
           Comment=Steam Game & Depot Management Suite
           Exec=AppRun %U
-          Icon=assella
+          Icon=assella-deck
           Terminal=false
           Type=Application
           Categories=Utility;Game;
           # Must match QApplication::applicationName() in src/main.py, which is
           # what the window manager matches against to pick the taskbar icon.
-          StartupWMClass=ASSella
-          MimeType=x-scheme-handler/accela;
+          StartupWMClass=ASSella Deck
           EOF
-          # Legacy alias: earlier builds shipped this name, and some launchers
-          # and .desktop entries still reference it.
-          cp AppDir/assella.desktop AppDir/ACCELA.desktop
           
-          # Copy icon. Prefer icon.png (500x500) and keep the legacy accela.png name so
-          # existing desktop entries and icon caches still resolve.
+          # Keep the fork icon name separate from ACCELA and upstream ASSella.
           if [ -f "src/res/logo/icon.png" ]; then
-            cp "src/res/logo/icon.png" AppDir/assella.png
+            cp "src/res/logo/icon.png" AppDir/assella-deck.png
             cp "src/res/logo/icon.png" AppDir/.DirIcon
           elif [ -f "src/res/logo/accela.png" ]; then
-            cp "src/res/logo/accela.png" AppDir/assella.png
+            cp "src/res/logo/accela.png" AppDir/assella-deck.png
             cp "src/res/logo/accela.png" AppDir/.DirIcon
           elif [ -f "assela_logo.png" ]; then
-            cp "assela_logo.png" AppDir/assella.png
+            cp "assela_logo.png" AppDir/assella-deck.png
             cp "assela_logo.png" AppDir/.DirIcon
           fi
-          # Legacy icon alias.
-          [ -f AppDir/assella.png ] && cp AppDir/assella.png AppDir/accela.png
 
           # 2. AppRun Script
           cat << 'EOF' > AppDir/AppRun
@@ -291,11 +284,11 @@ jobs:
             *)      UPDATE_TAG="*" ;;
           esac
 
-          UPDATE_INFO="gh-releases-zsync|tieorange|ASSella-Deck|${UPDATE_TAG}|ASSella.AppImage.zsync"
+          UPDATE_INFO="gh-releases-zsync|tieorange|ASSella-Deck|${UPDATE_TAG}|ASSella-Deck.AppImage.zsync"
 
           echo "Channel: $CHANNEL"
           echo "Generating AppImage with update string: $UPDATE_INFO"
-          ARCH=x86_64 appimagetool -n -u "$UPDATE_INFO" AppDir ASSella.AppImage
+          ARCH=x86_64 appimagetool -n -u "$UPDATE_INFO" AppDir ASSella-Deck.AppImage
 
           # Regenerate the .zsync from the FINAL AppImage rather than trusting the
           # one appimagetool emitted mid-build. appimagetool writes its .zsync
@@ -306,20 +299,20 @@ jobs:
           # 301302976 bytes / c52815c1... A delta sync against that file produces
           # a corrupt binary.
           echo "Regenerating zsync index from final AppImage..."
-          rm -f ASSella.AppImage.zsync
-          zsyncmake -u "$UPDATE_INFO" -o ASSella.AppImage.zsync ASSella.AppImage
+          rm -f ASSella-Deck.AppImage.zsync
+          zsyncmake -u "$UPDATE_INFO" -o ASSella-Deck.AppImage.zsync ASSella-Deck.AppImage
 
           # Generate SHA256 checksums last, so they always describe the shipped bytes.
-          sha256sum ASSella.AppImage > ASSella.AppImage.sha256
-          sha256sum ASSella.AppImage.zsync > ASSella.AppImage.zsync.sha256
+          sha256sum ASSella-Deck.AppImage > ASSella-Deck.AppImage.sha256
+          sha256sum ASSella-Deck.AppImage.zsync > ASSella-Deck.AppImage.zsync.sha256
 
       - name: Verify Release Artifact Integrity
         run: |
           set -euo pipefail
           echo "Cross-checking .zsync / .sha256 metadata against the actual AppImage..."
 
-          actual_size=$(stat -c%s ASSella.AppImage)
-          actual_sha1=$(sha1sum ASSella.AppImage | awk '{print $1}')
+          actual_size=$(stat -c%s ASSella-Deck.AppImage)
+          actual_sha1=$(sha1sum ASSella-Deck.AppImage | awk '{print $1}')
 
           # -a is REQUIRED, not cosmetic. A .zsync is a text header followed by a
           # binary block-checksum table, so GNU grep classifies the whole file as
@@ -333,15 +326,15 @@ jobs:
           # under `set -euo pipefail`, so if the header genuinely cannot be parsed
           # grep exits 1, pipefail propagates that, and `set -e` aborts the script
           # right here - silently, before the diagnostic below can explain it.
-          zsync_size=$(grep -a -i '^Length:' ASSella.AppImage.zsync | awk '{print $2}' | tr -d '\r' || true)
-          zsync_sha1=$(grep -a -i '^SHA-1:' ASSella.AppImage.zsync | awk '{print $2}' | tr -d '\r' || true)
+          zsync_size=$(grep -a -i '^Length:' ASSella-Deck.AppImage.zsync | awk '{print $2}' | tr -d '\r' || true)
+          zsync_sha1=$(grep -a -i '^SHA-1:' ASSella-Deck.AppImage.zsync | awk '{print $2}' | tr -d '\r' || true)
 
           fail=0
 
           # An unparseable header is a distinct failure from a mismatch. Without
           # this, "header missing" and "header present but wrong" look identical.
           if [ -z "$zsync_size" ] || [ -z "$zsync_sha1" ]; then
-            echo "::error::Could not parse Length/SHA-1 from ASSella.AppImage.zsync - treating this build as corrupt."
+            echo "::error::Could not parse Length/SHA-1 from ASSella-Deck.AppImage.zsync - treating this build as corrupt."
             echo "::error::Parsed Length='${zsync_size}' SHA-1='${zsync_sha1}' (both must be non-empty)."
             fail=1
           fi
@@ -360,15 +353,15 @@ jobs:
             echo "OK  zsync SHA-1   = $actual_sha1"
           fi
 
-          if [ "$(awk '{print $1}' ASSella.AppImage.sha256)" != "$(sha256sum ASSella.AppImage | awk '{print $1}')" ]; then
-            echo "::error::ASSella.AppImage.sha256 does not match the AppImage"
+          if [ "$(awk '{print $1}' ASSella-Deck.AppImage.sha256)" != "$(sha256sum ASSella-Deck.AppImage | awk '{print $1}')" ]; then
+            echo "::error::ASSella-Deck.AppImage.sha256 does not match the AppImage"
             fail=1
           else
             echo "OK  AppImage sha256 matches"
           fi
 
           # zsync must reference the delta target by the asset name actually published.
-          if ! grep -a -qi '^Filename:[[:space:]]*ASSella\.AppImage[[:space:]]*$' ASSella.AppImage.zsync; then
+          if ! grep -a -qi '^Filename:[[:space:]]*ASSella-Deck\.AppImage[[:space:]]*$' ASSella-Deck.AppImage.zsync; then
             echo "::error::zsync Filename header does not match published asset name"
             fail=1
           else
@@ -391,7 +384,7 @@ jobs:
           set -euo pipefail
           echo "::group::Extract AppImage"
           rm -rf AppDir_extract
-          ./ASSella.AppImage --appimage-extract > /dev/null
+          ./ASSella-Deck.AppImage --appimage-extract > /dev/null
           mv squashfs-root AppDir_extract
           echo "::endgroup::"
 
@@ -407,12 +400,12 @@ jobs:
           fi
           echo "OK  appimageupdatetool executes"
           test -x AppDir_extract/bin/run.sh || { echo "::error::run.sh missing"; exit 1; }
-          test -f AppDir_extract/assella.desktop || { echo "::error::assella.desktop missing"; exit 1; }
+          test -f AppDir_extract/assella-deck.desktop || { echo "::error::assella-deck.desktop missing"; exit 1; }
           test -f AppDir_extract/AppRun || { echo "::error::AppRun missing"; exit 1; }
           # The embedded update string drives delta updates. It lives in the
           # AppImage's ELF .upd_info section, not in the extracted squashfs
           # tree, so read it from the binary itself.
-          UPDATE_STR=$(grep -a -o 'gh-releases-zsync|[^[:cntrl:]]*' ASSella.AppImage | head -1 || true)
+          UPDATE_STR=$(grep -a -o 'gh-releases-zsync|[^[:cntrl:]]*' ASSella-Deck.AppImage | head -1 || true)
           echo "Embedded update string: ${UPDATE_STR:-<none found>}"
           case "$UPDATE_STR" in
             gh-releases-zsync\|tieorange\|ASSella-Deck\|*) echo "OK  update string present" ;;
@@ -460,8 +453,8 @@ jobs:
         with:
           name: ASSella-${{ steps.meta.outputs.channel }}-AppImage
           path: |
-            ASSella.AppImage
-            ASSella.AppImage.zsync
+            ASSella-Deck.AppImage
+            ASSella-Deck.AppImage.zsync
             *.sha256
 
       - name: Publish GitHub Release
@@ -475,10 +468,10 @@ jobs:
           body_path: ${{ steps.meta.outputs.body_file }}
           generate_release_notes: false
           files: |
-            ASSella.AppImage
-            ASSella.AppImage.zsync
-            ASSella.AppImage.sha256
-            ASSella.AppImage.zsync.sha256
+            ASSella-Deck.AppImage
+            ASSella-Deck.AppImage.zsync
+            ASSella-Deck.AppImage.sha256
+            ASSella-Deck.AppImage.zsync.sha256
           # Never let a stale asset from a previous run survive alongside a fresh
           # AppImage — that is exactly how v2.7.0beta ended up with a .zsync that
           # described a different binary.

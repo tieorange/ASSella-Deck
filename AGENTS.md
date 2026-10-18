@@ -25,6 +25,9 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 - Keep installer, in-app updater, and AppImage update metadata pointed at
   `tieorange/ASSella-Deck`. Never fall back to an upstream binary when a fork
   release is missing. Check all three paths after every upstream merge.
+- Keep this fork's AppImage, data, QSettings, desktop entry, icon, service name,
+  and uninstaller separate from ACCELA and upstream ASSella. Never create
+  compatibility aliases in their directories or claim `accela://`.
 - GitHub Actions is disabled for this fork at the repository level. Use local
   checks; do not enable Actions or rely on its workflows for validation.
 - Do not publish an AppImage until it has been tested on a Deck and the app and

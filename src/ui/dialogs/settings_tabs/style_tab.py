@@ -542,7 +542,8 @@ def on_origins_toggled(dialog, state: int) -> None:
         dialog._fade_timer = None
 
     if checked:
-        gif_path = os.path.expanduser("~/.local/share/ACCELA/jumpscare/lain.gif")
+        from utils.helpers import get_base_path
+        gif_path = str(get_base_path() / "jumpscare/lain.gif")
         if os.path.exists(gif_path):
             dialog._origins_movie = QMovie(gif_path)
             dialog._origins_movie.frameChanged.connect(dialog.update)

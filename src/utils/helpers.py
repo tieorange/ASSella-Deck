@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 from utils.paths import Paths
+from utils.fork_identity import APP_DATA_DIR
 from utils.qt_utils import clear_layout
 
 logger = logging.getLogger(__name__)
@@ -494,7 +495,7 @@ def resource_path(relative_path: str) -> Path:
     return Path(os.path.join(base_path, relative_path))
 
 
-def get_base_path(app_name: str = "ACCELA") -> Path:
+def get_base_path(app_name: str = APP_DATA_DIR) -> Path:
     """Return the base directory for the current platform (no logs dir)."""
     system = platform.system().lower()
 
@@ -543,7 +544,7 @@ def get_base_path(app_name: str = "ACCELA") -> Path:
 
 
 def get_cache_dir(subfolder: str = "") -> Path:
-    """Return cache directory (~/.local/share/ACCELA/cache/[subfolder]).
+    """Return cache directory (~/.local/share/ASSella-Deck/cache/[subfolder]).
     Checks legacy location first to maintain 100% backward compatibility.
     """
     base = get_base_path()
@@ -560,7 +561,7 @@ def get_cache_dir(subfolder: str = "") -> Path:
 
 
 def get_manifests_dir(subfolder: str = "") -> Path:
-    """Return manifests directory (~/.local/share/ACCELA/manifests/[subfolder]).
+    """Return manifests directory (~/.local/share/ASSella-Deck/manifests/[subfolder]).
     Checks legacy location first to maintain 100% backward compatibility.
     """
     base = get_base_path()
@@ -577,7 +578,7 @@ def get_manifests_dir(subfolder: str = "") -> Path:
 
 
 def get_data_dir() -> Path:
-    """Return data directory (~/.local/share/ACCELA/data/)."""
+    """Return data directory (~/.local/share/ASSella-Deck/data/)."""
     base = get_base_path()
     d_path = base / "data"
     d_path.mkdir(parents=True, exist_ok=True)
@@ -716,7 +717,7 @@ def get_slscheevo_path() -> Path:
 def get_schema_grabber_path() -> Path:
     binary_path = Paths.deps("schema-grabber/schema-grabber")
     if not binary_path.exists():
-        fallback_path = Path.home() / ".local/share/ACCELA/schema-grabber/bin/Release/net9.0/linux-x64/publish/schema-grabber"
+        fallback_path = get_base_path() / "schema-grabber/bin/Release/net9.0/linux-x64/publish/schema-grabber"
         if fallback_path.exists():
             return fallback_path
     return binary_path

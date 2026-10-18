@@ -154,7 +154,7 @@ def generate_manifest(plugins_dir: Path, output_file: Path, force_bump: bool = F
 
 def main():
     parser = argparse.ArgumentParser(description="Generate plugins_manifest.json for R2 and sync plugins")
-    default_accela_dir = Path.home() / ".local/share/ACCELA/plugins"
+default_accela_dir = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "ASSella-Deck/plugins"
     default_r2_staging = Path.home() / "r2-publish/github-files"
     publish_script = Path.home() / "r2-publish/publish.sh"
 

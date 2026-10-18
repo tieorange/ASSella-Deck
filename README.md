@@ -18,6 +18,10 @@ improvements below are on this fork's `deck/beta` branch, which tracks upstream
 - **Fork-controlled updates:** The installer, in-app updater, and AppImage update
   metadata point to this fork. The installer fails clearly if this fork has no
   release instead of installing an upstream build.
+- **Side-by-side installation:** The fork reserves its own AppImage, desktop
+  entry, icon, settings, and data paths. Its installer, updater, and uninstaller
+  leave ACCELA and upstream ASSella files alone. See the
+  [Deck install guide](docs/install.md).
 - **Upstream merge path:** The repository retains ASSella's Git history and has
   an [upstream merge guide](docs/deck-fork.md). Nine focused local tests cover
   scan recovery and large-library rendering.

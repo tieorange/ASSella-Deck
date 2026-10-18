@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from ui.dialogs.themed_message_box import ThemedMessageBox
 
 from utils.helpers import create_checkbox_setting
+from utils.fork_identity import SYSTEMD_SERVICE_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def create_webui_tab(dialog) -> QWidget:
     port_label = QLabel("Web UI Port:")
     dialog.web_ui_port_spinbox = QSpinBox()
     dialog.web_ui_port_spinbox.setRange(1024, 65535)
-    dialog.web_ui_port_spinbox.setValue(dialog.settings.value("web_ui_port", 8765, type=int))
+    dialog.web_ui_port_spinbox.setValue(dialog.settings.value("web_ui_port", 8766, type=int))
     dialog.web_ui_port_spinbox.setFixedWidth(100)
 
     check_port_btn = QPushButton("Check Availability")
@@ -140,12 +141,12 @@ def check_port_availability(dialog) -> None:
 
 def get_service_status() -> str:
     try:
-        service_path = os.path.expanduser("~/.config/systemd/user/assella-testing.service")
+        service_path = os.path.expanduser(f"~/.config/systemd/user/{SYSTEMD_SERVICE_NAME}")
         if not os.path.exists(service_path):
             return "not_installed"
 
         res = subprocess.run(
-            ["systemctl", "--user", "is-active", "assella-testing.service"],
+            ["systemctl", "--user", "is-active", SYSTEMD_SERVICE_NAME],
             capture_output=True,
             text=True,
         )
@@ -162,7 +163,7 @@ def get_service_status() -> str:
 def is_service_enabled() -> bool:
     try:
         res = subprocess.run(
-            ["systemctl", "--user", "is-enabled", "assella-testing.service"],
+            ["systemctl", "--user", "is-enabled", SYSTEMD_SERVICE_NAME],
             capture_output=True,
             text=True,
         )
@@ -211,7 +212,7 @@ def update_service_status(dialog) -> None:
 
 def start_service(dialog) -> None:
     try:
-        subprocess.run(["systemctl", "--user", "start", "assella-testing.service"])
+        subprocess.run(["systemctl", "--user", "start", SYSTEMD_SERVICE_NAME])
         update_service_status(dialog)
     except Exception as e:
         ThemedMessageBox.critical(dialog, "Service Error", f"Failed to start service: {e}")
@@ -219,7 +220,7 @@ def start_service(dialog) -> None:
 
 def stop_service(dialog) -> None:
     try:
-        subprocess.run(["systemctl", "--user", "stop", "assella-testing.service"])
+        subprocess.run(["systemctl", "--user", "stop", SYSTEMD_SERVICE_NAME])
         update_service_status(dialog)
     except Exception as e:
         ThemedMessageBox.critical(dialog, "Service Error", f"Failed to stop service: {e}")
@@ -227,7 +228,7 @@ def stop_service(dialog) -> None:
 
 def enable_boot(dialog) -> None:
     try:
-        subprocess.run(["systemctl", "--user", "enable", "assella-testing.service"])
+        subprocess.run(["systemctl", "--user", "enable", SYSTEMD_SERVICE_NAME])
         update_service_status(dialog)
     except Exception as e:
         ThemedMessageBox.critical(dialog, "Service Error", f"Failed to enable service on boot: {e}")
@@ -235,7 +236,7 @@ def enable_boot(dialog) -> None:
 
 def disable_boot(dialog) -> None:
     try:
-        subprocess.run(["systemctl", "--user", "disable", "assella-testing.service"])
+        subprocess.run(["systemctl", "--user", "disable", SYSTEMD_SERVICE_NAME])
         update_service_status(dialog)
     except Exception as e:
         ThemedMessageBox.critical(dialog, "Service Error", f"Failed to disable service on boot: {e}")

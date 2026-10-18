@@ -16,9 +16,28 @@ from ui.dialogs.themed_message_box import ThemedMessageBox
 from utils.paths import Paths
 from utils.version import app_version
 
-from utils.release_source import releases_api_url, version_url
+from utils.release_source import RELEASE_REPOSITORY, releases_api_url, version_url
+from utils.helpers import get_base_path
+from utils.fork_identity import APPIMAGE_NAME
 
 logger = logging.getLogger(__name__)
+
+
+def install_update_candidate(candidate: Path, installed: Path) -> None:
+    """Back up and replace only the fork's own installed AppImage."""
+    if installed.name != APPIMAGE_NAME or installed.parent != get_base_path():
+        raise ValueError("Refusing to update an AppImage outside ASSella Deck")
+    if installed.parent.is_symlink() or installed.is_symlink() or not candidate.is_file():
+        raise ValueError("Unsafe AppImage update path")
+    backup = installed.with_name(f"{APPIMAGE_NAME}.previous")
+    if backup.is_symlink():
+        raise ValueError("Unsafe AppImage backup path")
+    staged_backup = installed.with_name(f"{APPIMAGE_NAME}.previous.part")
+    if staged_backup.is_symlink():
+        raise ValueError("Unsafe staged AppImage backup path")
+    shutil.copy2(installed, staged_backup)
+    os.replace(staged_backup, backup)
+    os.replace(candidate, installed)
 
 
 def extract_semver(raw: str) -> str:
@@ -40,16 +59,22 @@ class AppUpdateManager(QObject):
         """Install update using delta ZSync (appimageupdatetool), with full-download fallback."""
 
         # Determine where the installed AppImage lives
-        appimage_path = os.environ.get("APPIMAGE", "")
-        default_appimage = os.path.expanduser("~/.local/share/ACCELA/ASSella.AppImage")
-        if not appimage_path or not os.path.exists(appimage_path):
-            appimage_path = default_appimage
-        if not os.path.exists(appimage_path):
+        default_appimage = get_base_path() / APPIMAGE_NAME
+        running_appimage = os.environ.get("APPIMAGE", "")
+        if running_appimage and Path(running_appimage).absolute() != default_appimage.absolute():
             ThemedMessageBox.information(
                 self._parent, "Self-Update",
-                "Could not locate the installed ASSella.AppImage to update."
+                "This copy is outside the ASSella Deck install directory. "
+                "Use the fork installer to update it safely."
             )
             return
+        if default_appimage.parent.is_symlink() or default_appimage.is_symlink() or not default_appimage.is_file():
+            ThemedMessageBox.information(
+                self._parent, "Self-Update",
+                "Could not locate the installed ASSella Deck AppImage to update."
+            )
+            return
+        appimage_path = str(default_appimage)
 
         remote_version = getattr(self._parent, "_latest_remote_version", None)
         # Normalise the tag to exactly one leading "v". Release tags in this repo
@@ -125,22 +150,20 @@ class AppUpdateManager(QObject):
                             raise
 
                 download_url = None
-                appimage_candidates = []
                 for asset in release_data.get("assets", []):
                     name = asset.get("name", "")
                     if name.lower().endswith(".zsync") or name.lower().endswith(".sha256"):
                         continue
                     if name.lower().endswith(".appimage"):
-                        if name == "ASSella.AppImage":
+                        if name == APPIMAGE_NAME:
                             download_url = asset.get("browser_download_url")
                             break
-                        appimage_candidates.append(asset.get("browser_download_url"))
-
-                if not download_url and appimage_candidates:
-                    download_url = appimage_candidates[0]
-
                 if not download_url:
-                    raise RuntimeError("No AppImage asset found in the release.")
+                    raise RuntimeError("No ASSella Deck AppImage asset found in the release.")
+                if not download_url.startswith(
+                    f"https://github.com/{RELEASE_REPOSITORY}/releases/download/"
+                ):
+                    raise RuntimeError("Release asset does not belong to ASSella Deck.")
 
                 # --- Delta (appimageupdatetool, then zsync) ----------------
                 # Prefer the bundled AppImageUpdate, which reads the update string
@@ -179,7 +202,7 @@ class AppUpdateManager(QObject):
                         # appimageupdatetool rewrites its target in place and creates
                         # a .zs-old backup; work on a copy so a failed run cannot
                         # damage the working install.
-                        target = dest_dir / "ASSella.AppImage.autoupdate"
+                        target = dest_dir / f"{APPIMAGE_NAME}.autoupdate"
                         shutil.copy2(appimage_path, target)
                         proc = subprocess.run(
                             [updater, "--self-update", str(target)],
@@ -213,8 +236,8 @@ class AppUpdateManager(QObject):
                         elif not os.path.exists(appimage_path):
                             logger.info("No installed AppImage to delta against; using full download.")
                         else:
-                            seed_copy = dest_dir / "ASSella.AppImage.zsync-seed"
-                            zsync_out = dest_dir / "ASSella.AppImage.zsync-out"
+                            seed_copy = dest_dir / f"{APPIMAGE_NAME}.zsync-seed"
+                            zsync_out = dest_dir / f"{APPIMAGE_NAME}.zsync-out"
                             # zsync rewrites its input file in place, so seed it from
                             # a copy: a failed sync must not damage the working install.
                             shutil.copy2(appimage_path, seed_copy)
@@ -247,7 +270,7 @@ class AppUpdateManager(QObject):
                 if delta_ok and tmp_path is not None:
                     try:
                         os.chmod(tmp_path, os.stat(tmp_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-                        shutil.move(str(tmp_path), appimage_path)
+                        install_update_candidate(Path(tmp_path), Path(appimage_path))
                         QMetaObject.invokeMethod(progress, "setValue",
                             Qt.ConnectionType.QueuedConnection, Q_ARG(int, 100))
                         QMetaObject.invokeMethod(self._parent, "_on_update_success",
@@ -258,7 +281,7 @@ class AppUpdateManager(QObject):
                         tmp_path = None
 
                 logger.info(f"Self-update fallback: downloading from {download_url}")
-                tmp_path = dest_dir / "ASSella.AppImage.part"
+                tmp_path = dest_dir / f"{APPIMAGE_NAME}.part"
 
                 QMetaObject.invokeMethod(progress, "setLabelText",
                     Qt.ConnectionType.QueuedConnection, Q_ARG(str, "Downloading full AppImage..."))
@@ -318,26 +341,24 @@ class AppUpdateManager(QObject):
                             )
                         logger.info(f"SHA-256 verified: {actual}")
                     else:
-                        logger.warning("No published .sha256 for this release; skipping verification.")
+                        raise RuntimeError("Published SHA-256 is malformed.")
                 except urllib.error.HTTPError as he:
                     if he.code == 404:
-                        logger.warning("No published .sha256 for this release; skipping verification.")
+                        raise RuntimeError("Fork release has no SHA-256 checksum.") from he
                     else:
                         raise
                 except RuntimeError:
                     raise
-                except Exception as ve:
-                    logger.warning(f"Checksum verification skipped: {ve}")
 
-                shutil.move(str(tmp_path), appimage_path)
+                install_update_candidate(Path(tmp_path), Path(appimage_path))
 
                 # Clean up any delta scratch files this run may have left behind.
                 for leftover_name in (
-                    "ASSella.AppImage.autoupdate",
-                    "ASSella.AppImage.autoupdate.zs-old",
-                    "ASSella.AppImage.zsync-seed",
-                    "ASSella.AppImage.zsync-out",
-                    "ASSella.AppImage.zsync-seed.zs-old",
+                    f"{APPIMAGE_NAME}.autoupdate",
+                    f"{APPIMAGE_NAME}.autoupdate.zs-old",
+                    f"{APPIMAGE_NAME}.zsync-seed",
+                    f"{APPIMAGE_NAME}.zsync-out",
+                    f"{APPIMAGE_NAME}.zsync-seed.zs-old",
                 ):
                     (dest_dir / leftover_name).unlink(missing_ok=True)
 

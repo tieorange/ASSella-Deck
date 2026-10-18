@@ -23,8 +23,9 @@ class Paths:
             if bundled.exists():
                 return bundled
 
-            # Fallback to ~/.local/share/ACCELA/src/deps
-            user_deps = Path.home() / ".local" / "share" / "ACCELA" / "src" / "deps" / relative_path
+            # Fall back only to this fork's extracted dependencies.
+            from utils.helpers import get_base_path
+            user_deps = get_base_path() / "src" / "deps" / relative_path
             if user_deps.exists():
                 return user_deps
 
@@ -103,13 +104,14 @@ class Paths:
 
 
 def get_jumpscare_gif(filename: str) -> str:
-    """Resolve path to a jumpscare GIF from bundled /res/jumpscare/ or ~/.local/share/ACCELA/jumpscare/."""
+    """Resolve a bundled or fork-local jumpscare GIF."""
     # 1. Bundled in AppImage / source tree
     bundled = Paths.resource(f"jumpscare/{filename}")
     if bundled.exists():
         return str(bundled)
     # 2. User directory fallback
-    user_path = Path.home() / ".local" / "share" / "ACCELA" / "jumpscare" / filename
+    from utils.helpers import get_base_path
+    user_path = get_base_path() / "jumpscare" / filename
     if user_path.exists():
         return str(user_path)
     return ""
