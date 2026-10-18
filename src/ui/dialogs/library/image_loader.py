@@ -22,13 +22,27 @@ logger = logging.getLogger(__name__)
 class LibraryImageLoaderMixin:
     """Mixin for asynchronous game cover art fetching, queueing, and caching."""
 
-    def _start_pending_image_fetches(self) -> None:
-        """Sequential start of delayed image fetches."""
-        if self._closing or not hasattr(self, "_pending_image_fetches"):
+    def _start_pending_image_fetches(self, _value=None) -> None:
+        """Queue artwork for visible rows and a small scroll margin only."""
+        if self._closing or not getattr(self, "_pending_image_fetches", None):
             return
-        for item, app_id in self._pending_image_fetches:
-            self._fetch_item_image(item, app_id)
-        self._pending_image_fetches.clear()
+        viewport = self.games_list.viewport().rect()
+        first_item = self.games_list.itemAt(1, 0)
+        first_row = max(0, self.games_list.row(first_item)) if first_item else 0
+        for row in range(first_row, self.games_list.count()):
+            item = self.games_list.item(row)
+            rect = self.games_list.visualItemRect(item)
+            if rect.top() > viewport.bottom() + 200:
+                break
+            app_id = str((item.data(Qt.ItemDataRole.UserRole) or {}).get("appid", "0"))
+            pending_item = self._pending_image_fetches.pop(app_id, None)
+            if pending_item is not item:
+                continue
+            cached = self._image_cache.get(app_id)
+            if cached:
+                self._update_item_image_if_match(item, app_id, cached)
+            else:
+                self._fetch_item_image(item, app_id)
 
     def _fetch_item_image(self, _item: QListWidgetItem, app_id: str) -> None:
         if not ImageFetcher:

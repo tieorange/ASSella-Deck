@@ -67,7 +67,6 @@ class LibraryScannerMixin:
         """Called when the full batch update check finishes."""
         self._checking_updates = False
         self._scanning = False
-        self._refresh_game_list()
 
     def _on_game_update_status_changed(self, appid: str, update_status: str) -> None:
         if self._closing or not self.isVisible():

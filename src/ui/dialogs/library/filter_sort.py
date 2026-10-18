@@ -244,14 +244,37 @@ class LibraryFilterSortMixin:
         else:
             showing_games = games
 
-        # Optimize: freeze widget repaints during batch insertion
-        self.games_list.setUpdatesEnabled(False)
-        total_size = 0
-        try:
-            for game in showing_games:
-                total_size += self._add_game_to_list(game)
-        finally:
-            self.games_list.setUpdatesEnabled(True)
+        # Insert a bounded number of widgets per event-loop turn so large
+        # libraries do not freeze the Steam Deck UI.
+        self._list_generation = getattr(self, "_list_generation", 0) + 1
+        generation = self._list_generation
+        game_iterator = iter(showing_games)
+        total_size = sum(int(game.get("size_on_disk") or 0) for game in showing_games)
+
+        def render_batch():
+            if self._closing or generation != self._list_generation:
+                return
+            self.games_list.setUpdatesEnabled(False)
+            rendered = 0
+            try:
+                for _ in range(30):
+                    try:
+                        game = next(game_iterator)
+                    except StopIteration:
+                        break
+                    self._add_game_to_list(game)
+                    rendered += 1
+            finally:
+                self.games_list.setUpdatesEnabled(True)
+            if rendered:
+                QTimer.singleShot(0, render_batch)
+            else:
+                self._refreshing = False
+                QTimer.singleShot(0, self._start_pending_image_fetches)
+                if active_tab != TAB_STEAM:
+                    QTimer.singleShot(300, self._populate_ratings_badges)
+
+        QTimer.singleShot(0, render_batch)
 
         if active_tab == TAB_STEAM:
             tab_label = "Steam (Beta)"
@@ -272,14 +295,6 @@ class LibraryFilterSortMixin:
                 f"Found {len(games)} {tab_label} game(s) - "
                 f"Total Size: {format_size(total_size)}"
             )
-        self._refreshing = False
-
-        # Defer image downloads; skip ratings badges entirely for Steam tab
-        if active_tab != TAB_STEAM:
-            QTimer.singleShot(100, self._start_pending_image_fetches)
-            QTimer.singleShot(300, self._populate_ratings_badges)
-        else:
-            QTimer.singleShot(50, self._start_pending_image_fetches)
 
     def _add_game_to_list(self, game: dict) -> int:
         """Creates and adds a single game widget to the list. Returns size."""
@@ -310,7 +325,7 @@ class LibraryFilterSortMixin:
         if app_id in ("0", "N/A", "unknown"):
             self.executor.submit(self._resolve_and_update_item, item, game)
         else:
-            self._pending_image_fetches.append((item, app_id))
+            self._pending_image_fetches[app_id] = item
 
         return size
 

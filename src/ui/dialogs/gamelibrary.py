@@ -99,7 +99,7 @@ class GameLibraryDialog(
         self._image_cache = {}
         self._items_by_appid = {}
         self._manifest_mtimes = {}
-        self._pending_image_fetches = []
+        self._pending_image_fetches = {}
         self._dialog_open = False
         self._refreshing = False
         self._closing = False
@@ -214,6 +214,12 @@ class GameLibraryDialog(
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._position_selection_fab()
+        if hasattr(self, "games_list"):
+            QTimer.singleShot(0, self._start_pending_image_fetches)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self._start_pending_image_fetches)
 
     def _setup_ui(self) -> None:
         """Create and arrange UI elements."""
@@ -400,6 +406,7 @@ class GameLibraryDialog(
         self.games_list = QListWidget()
         self.games_list.setSpacing(2)
         self.games_list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
+        self.games_list.verticalScrollBar().valueChanged.connect(self._start_pending_image_fetches)
         self.games_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         layout.addWidget(self.games_list)
 
