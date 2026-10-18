@@ -30,6 +30,8 @@ else
     NC=''
 fi
 
+FORK_REPO="tieorange/ASSella-Deck"
+FORK_BRANCH="deck/beta"
 INSTALL_DESTINATION="$HOME/.local/share/ACCELA"
 DESKTOP_DIR="$HOME/.local/share/applications"
 PRIMARY_DESKTOP_ENTRY="$DESKTOP_DIR/assella.desktop"
@@ -407,7 +409,7 @@ get_latest_github_version() {
     LATEST_URL=""
     detect_channel
 
-    REL_JSON=$(fetch_github_json "https://api.github.com/repos/niwia/ASSella/releases" || true)
+    REL_JSON=$(fetch_github_json "https://api.github.com/repos/$FORK_REPO/releases" || true)
     if [ -n "$REL_JSON" ]; then
         if command -v python3 &>/dev/null; then
             PARSED=$(echo "$REL_JSON" | python3 -c '
@@ -460,18 +462,10 @@ except Exception:
         fi
     fi
 
-    # Channel-aware fallback if GitHub API rate-limits or network fails
+    # Never fall back to upstream releases: that would replace the Deck fork.
     if [ -z "$LATEST_URL" ]; then
-        if [ "$TARGET_CHANNEL" = "canary" ]; then
-            LATEST_VER="v3.0Release_candidate111026001"
-            LATEST_URL="https://github.com/niwia/ASSella/releases/download/v3.0Release_candidate111026001/assella3.0canary.appimage"
-        elif [ "$TARGET_CHANNEL" = "stable" ]; then
-            LATEST_VER="v2.6.5"
-            LATEST_URL="https://github.com/niwia/ASSella/releases/download/v2.6.5/ASSella.AppImage"
-        else
-            LATEST_VER="v2.7.0beta"
-            LATEST_URL="https://github.com/niwia/ASSella/releases/download/v2.7.0beta/ASSella.AppImage"
-        fi
+        echo "No $TARGET_CHANNEL AppImage release found in $FORK_REPO." >&2
+        return 1
     fi
 }
 
@@ -756,7 +750,7 @@ EOL
     # Application Icon Download
     echo -e "${YELLOW}[INFO] Applying application icon...${NC}"
     mkdir -p "$ICON_DIR"
-    curl -sL -o "$PRIMARY_ICON_PATH" "https://raw.githubusercontent.com/niwia/ASSella/main/src/res/logo/icon.png" || true
+    curl -sL -o "$PRIMARY_ICON_PATH" "https://raw.githubusercontent.com/$FORK_REPO/$FORK_BRANCH/src/res/logo/icon.png" || true
     if [ -f "$LEGACY_ICON_PATH" ] || [ -L "$LEGACY_ICON_PATH" ]; then
         ln -sf assella.png "$LEGACY_ICON_PATH"
     fi

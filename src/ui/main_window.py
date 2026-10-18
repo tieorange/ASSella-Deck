@@ -45,6 +45,8 @@ from utils.task_runner import TaskRunner
 from datetime import datetime, timezone
 from utils.version import app_version
 
+from utils.release_source import releases_api_url, version_url
+
 logger = logging.getLogger(__name__)
 
 # How long Update All waits for the user to answer a depot-selection dialog
@@ -2383,7 +2385,7 @@ class MainWindow(QMainWindow):
 
                 # 1. Primary check: GitHub Releases API (detects full releases + pre-releases with AppImage)
                 try:
-                    api_url = "https://api.github.com/repos/niwia/ASSella/releases"
+                    api_url = releases_api_url()
                     req = urllib.request.Request(
                         api_url,
                         headers={"User-Agent": "ASSella-Updater", "Accept": "application/vnd.github+json"}
@@ -2420,7 +2422,7 @@ class MainWindow(QMainWindow):
                 # 2. Fallback check: raw version file on GitHub branch
                 if not remote_clean:
                     branch = configured_channel if configured_channel in ("beta", "canary") else "main"
-                    url = f"https://raw.githubusercontent.com/niwia/ASSella/{branch}/src/res/version"
+                    url = version_url()
                     logger.info(f"Checking for tool updates from raw branch: {branch}")
                     req = urllib.request.Request(
                         url,

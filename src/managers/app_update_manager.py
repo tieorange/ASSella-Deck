@@ -16,6 +16,8 @@ from ui.dialogs.themed_message_box import ThemedMessageBox
 from utils.paths import Paths
 from utils.version import app_version
 
+from utils.release_source import releases_api_url, version_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +93,7 @@ class AppUpdateManager(QObject):
                     Qt.ConnectionType.QueuedConnection, Q_ARG(str, "Fetching release info from GitHub..."))
 
                 if tag == "latest":
-                    api_url = "https://api.github.com/repos/niwia/ASSella/releases"
+                    api_url = releases_api_url()
                     req = urllib.request.Request(
                         api_url,
                         headers={"User-Agent": "ASSella-Updater", "Accept": "application/vnd.github+json"}
@@ -100,7 +102,7 @@ class AppUpdateManager(QObject):
                         releases_list = json.loads(resp.read().decode("utf-8"))
                         release_data = releases_list[0] if releases_list else {}
                 else:
-                    api_url = f"https://api.github.com/repos/niwia/ASSella/releases/tags/{tag}"
+                    api_url = f"{releases_api_url()}/tags/{tag}"
                     req = urllib.request.Request(
                         api_url,
                         headers={"User-Agent": "ASSella-Updater", "Accept": "application/vnd.github+json"}
@@ -111,7 +113,7 @@ class AppUpdateManager(QObject):
                     except urllib.error.HTTPError as err:
                         if err.code == 404 and tag != "latest":
                             alt_tag = tag[1:] if tag.startswith("v") else f"v{tag}"
-                            alt_api_url = f"https://api.github.com/repos/niwia/ASSella/releases/tags/{alt_tag}"
+                            alt_api_url = f"{releases_api_url()}/tags/{alt_tag}"
                             logger.info(f"Release tag {tag} returned 404, retrying with alternate tag: {alt_tag}")
                             req_alt = urllib.request.Request(
                                 alt_api_url,

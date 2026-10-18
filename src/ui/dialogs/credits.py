@@ -22,6 +22,8 @@ from utils.settings import get_settings
 from utils.version import app_version
 from ui.dialogs.themed_dialog import install_themed_frame
 
+from utils.release_source import releases_api_url, version_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -395,7 +397,7 @@ class CreditsDialog(QDialog):
                     branch = "beta"
                 else:
                     branch = "main"
-                url = f"https://raw.githubusercontent.com/niwia/ASSella/{branch}/src/res/version"
+                url = version_url()
                 req = urllib.request.Request(url, headers={"User-Agent": "ASSella-Updater"})
                 with urllib.request.urlopen(req, timeout=10) as response:
                     remote_raw = response.read().decode("utf-8").strip()

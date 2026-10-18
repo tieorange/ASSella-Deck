@@ -30,7 +30,7 @@ on:
       run_preflight:
         description: 'Run the pre-release verification suite against the built AppImage'
         required: false
-        default: true
+        default: false
         type: boolean
 
 permissions:
@@ -291,7 +291,7 @@ jobs:
             *)      UPDATE_TAG="*" ;;
           esac
 
-          UPDATE_INFO="gh-releases-zsync|niwia|ASSella|${UPDATE_TAG}|ASSella.AppImage.zsync"
+          UPDATE_INFO="gh-releases-zsync|tieorange|ASSella-Deck|${UPDATE_TAG}|ASSella.AppImage.zsync"
 
           echo "Channel: $CHANNEL"
           echo "Generating AppImage with update string: $UPDATE_INFO"
@@ -415,7 +415,7 @@ jobs:
           UPDATE_STR=$(grep -a -o 'gh-releases-zsync|[^[:cntrl:]]*' ASSella.AppImage | head -1 || true)
           echo "Embedded update string: ${UPDATE_STR:-<none found>}"
           case "$UPDATE_STR" in
-            gh-releases-zsync\|niwia\|ASSella\|*) echo "OK  update string present" ;;
+            gh-releases-zsync\|tieorange\|ASSella-Deck\|*) echo "OK  update string present" ;;
             *) echo "::error::Update string missing or malformed - delta updates would break"; exit 1 ;;
           esac
           echo "::endgroup::"
