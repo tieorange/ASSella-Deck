@@ -5,6 +5,13 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 [`docs/agent-guide.md`](docs/agent-guide.md) before changing code, and read
 [`docs/deck-library.md`](docs/deck-library.md) for library work.
 
+The maintainer has nine years of Flutter experience and prefers clean
+architecture with three layers divided by feature. Apply that preference to
+this Python/PyQt codebase without introducing Flutter or moving unrelated
+upstream code. Read `/Users/anduser/.codex/RTK.md` in this workspace: prefix
+shell commands with `rtk`; use `rtk proxy <command>` when a raw command needs
+to run without RTK filtering.
+
 ## Priorities
 
 - Keep the installed-games library responsive and recoverable on Steam Deck,
@@ -13,9 +20,40 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
   Replace stale entries only after that library can be scanned successfully.
 - Run filesystem scans and other slow work off the Qt UI thread. Send UI updates
   through Qt signals or the existing main-thread bridge.
-- Put new feature code behind clear presentation, domain, and data boundaries
-  where practical. Improve the existing Python/PyQt structure incrementally;
-  avoid a broad architecture rewrite during a bug fix.
+- Divide new feature code into presentation (Qt widgets and input), domain
+  (state, decisions, validation), and data (managers and external services).
+  Keep dependencies directed toward domain logic and pass collaborators into
+  widgets where feasible. Improve existing PyQt code incrementally so upstream
+  merges remain manageable; avoid broad rewrites during a bug fix.
+
+## Code map and data flow
+
+| Area | Where to start | Responsibility |
+| --- | --- | --- |
+| App startup | `src/main.py`, `src/ui/main_window.py` | Qt application, main window, navigation entry points |
+| Deck screens | `src/ui/deck_ui/` | Home, guided install, Activity, shared theme, focus, controller routing |
+| Library and details | `src/ui/dialogs/gamelibrary.py`, `src/ui/dialogs/library/`, `src/ui/dialogs/gamelibrary_v2.py` | Library window, rows, filters, scans, Game Details |
+| Background work | `src/managers/` | Game discovery, task queue, downloads, updates, app updates |
+| Steam and install logic | `src/core/` | Steam paths, manifests, depots, game operations |
+| Shared adapters | `src/utils/` | Settings, paths, caches, artwork, logging, fork identity |
+| Assets | `src/res/` | Theme resources, icons, version, bundled app resources |
+| Checks and mock | `scripts/` | Focused tests, safe in-memory UI mock, local tooling |
+| Delivery | `install.sh`, `uninstall.sh`, `docs/` | Fork-only installer, maintenance, developer guides |
+
+Trace a UI action from its widget in `src/ui/` to a manager or domain helper,
+then to `src/core/` or `src/utils/` for filesystem, Steam, and network access.
+Qt widgets own presentation and input; keep validation and state decisions in a
+feature's domain code and external access in its data/manager code. Use signals
+or the main-thread bridge to return background results to Qt. For the guided
+flow, begin in `src/ui/deck_ui/install/`; for Activity, begin in
+`src/ui/deck_ui/activity/`. Older upstream features are not fully layered, so
+make local changes without moving unrelated files.
+
+The editable fork icon is `src/res/logo/icon.svg`. Run
+`python scripts/render_deck_icon.py` with the app's PyQt6 environment after
+changing it to regenerate
+`icon.png` and `icon.ico`; keep the desktop installer, AppImage packaging, and
+Qt window icon on those fork assets. Do not repurpose upstream `accela.png`.
 
 ## UI redesign contract
 
@@ -45,6 +83,9 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 - The Deck install entry from Home and search opens `DeckInstallFlow`; it emits
   queue metadata only at the final Review action. Keep `FetchManifestDialog`
   and depot selection directly callable for existing library and manager paths.
+- Library and Game Details currently retain some direct install dialogs. When
+  changing those entry points, route into the appropriate guided step while
+  preserving the underlying manager operations and explicit Review action.
 - Native gamepad input uses `pygame-ce` controller mappings. Retain keyboard
   navigation when no controller is attached. Keep SDL polling on the Qt main
   thread and do not consume directional input from text fields or lists.
@@ -71,6 +112,10 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 - For library changes, run `python scripts/test_deck_library.py` with PyQt6 and
   psutil available, plus `python scripts/test_deck_navigation.py` and relevant
   existing tests for UI changes.
+- For redesigned screens, use `scripts/run_ui_mock.py` with the relevant
+  `--state` fixture and inspect both `--deck` (1280x800) and `--deck-720`
+  (1280x720). Check keyboard focus, Back, search, section switching, empty and
+  error states. Mock checks do not establish real controller or Deck behavior.
 - Run `python -m compileall -q src`, `python scripts/check_silent_exceptions.py`,
   and `bash -n install.sh` when those files are touched. Use
   `git -c core.whitespace=cr-at-eol diff --check` for CRLF source files.

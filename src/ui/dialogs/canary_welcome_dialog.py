@@ -1,11 +1,10 @@
 """
 Canary Welcome Slideshow Wizard
 ===============================
-Compact, frameless 640x360 onboarding window matching the exact dimensions
-of the Skyrim wake-up animation.
+Frameless Deck onboarding window with room for touch controls.
 
 Features:
-  1. Awakening: Full-window 640x360 Skyrim GIF with cinematic bottom overlay
+  1. Awakening: Scaled Skyrim GIF with cinematic bottom overlay
      ("Hi, Your adventure begins" + "Next →" button) on completion.
   2. Hubcap API: Minimal API key field with dynamic Paste/Validate button,
      auto-mode ISP bypass validation, and clean User/Quota/Route status.
@@ -77,7 +76,7 @@ def get_linux_distro() -> str:
 
 
 class CanaryWelcomeDialog(QDialog):
-    """Compact frameless 640x360 onboarding slideshow matching the GIF dimensions."""
+    """Frameless onboarding slideshow sized for Deck touch controls."""
 
     _hubcap_val_signal = pyqtSignal(bool, dict, str)
     _sls_check_signal = pyqtSignal(bool, dict)
@@ -88,7 +87,7 @@ class CanaryWelcomeDialog(QDialog):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(640, 360)
+        self.setFixedSize(800, 480)
 
         self.manual = manual
         self.settings = get_settings()
@@ -102,6 +101,8 @@ class CanaryWelcomeDialog(QDialog):
         self._intro_completed = False
         self._hubcap_validating = False
         self._drag_pos: Optional[QPoint] = None
+        from ui.deck_ui.navigation import FocusReturn
+        self._focus_return = FocusReturn()
 
         # Watermark is written immediately so that first-time launch is permanent
         if not self.manual:
@@ -218,7 +219,7 @@ class CanaryWelcomeDialog(QDialog):
         # Outer rounded frame with thin border
         self.outer_frame = QFrame(self)
         self.outer_frame.setObjectName("OuterFrame")
-        self.outer_frame.setFixedSize(640, 360)
+        self.outer_frame.setFixedSize(800, 480)
         self.outer_frame.setStyleSheet(f"""
             QFrame#OuterFrame {{
                 background-color: {self.bg_color};
@@ -275,7 +276,7 @@ class CanaryWelcomeDialog(QDialog):
         frame_layout.setSpacing(0)
 
         self.stack = QStackedWidget(self.outer_frame)
-        self.stack.setFixedSize(638, 358)
+        self.stack.setFixedSize(798, 478)
 
         # 5 Slides
         self.slide_awakening = self._build_slide_awakening()
@@ -289,6 +290,7 @@ class CanaryWelcomeDialog(QDialog):
         self.stack.addWidget(self.slide_sls)          # 2
         self.stack.addWidget(self.slide_at0m)         # 3
         self.stack.addWidget(self.slide_preferences)  # 4
+        self.stack.currentChanged.connect(self._focus_current_step)
 
         frame_layout.addWidget(self.stack)
         root_layout.addWidget(self.outer_frame)
@@ -312,7 +314,7 @@ class CanaryWelcomeDialog(QDialog):
         layout.addWidget(steps, 1)
 
         btn_close = QPushButton("✕")
-        btn_close.setFixedSize(24, 24)
+        btn_close.setFixedSize(48, 48)
         btn_close.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -337,21 +339,42 @@ class CanaryWelcomeDialog(QDialog):
         else:
             self.close()
 
+    def _focus_current_step(self, index: int):
+        """Focus the main task after changing onboarding pages."""
+        def apply_focus():
+            page = self.stack.widget(index)
+            if page is None:
+                return
+            if index == 1 and self.txt_api_key.isEnabled():
+                self.txt_api_key.setFocus()
+                return
+            preferred = ("Skip intro",) if index == 0 else ("Finish", "Next", "Skip")
+            for prefix in preferred:
+                for button in page.findChildren(QPushButton):
+                    if button.isVisible() and button.isEnabled() and button.text().lstrip("← ").startswith(prefix):
+                        button.setFocus()
+                        return
+        QTimer.singleShot(0, apply_focus)
+
+    def done(self, result):
+        self._focus_return.restore()
+        super().done(result)
+
     # ──────────────────────────────────────────────────────────────────────────
-    # Slide 1: Awakening (Full 640x360 GIF + Bottom Overlay)
+    # Slide 1: Awakening (scaled GIF with bottom overlay)
     # ──────────────────────────────────────────────────────────────────────────
 
     def _build_slide_awakening(self) -> QWidget:
         widget = QWidget()
-        widget.setFixedSize(638, 358)
+        widget.setFixedSize(798, 478)
 
         self.gif_label = QLabel(widget)
-        self.gif_label.setGeometry(0, 0, 638, 358)
+        self.gif_label.setGeometry(0, 0, 798, 478)
         self.gif_label.setScaledContents(True)
         self.gif_label.setStyleSheet("border-radius: 9px; background: #000000;")
 
         self.btn_gif_close = QPushButton("✕", widget)
-        self.btn_gif_close.setGeometry(604, 8, 26, 26)
+        self.btn_gif_close.setGeometry(740, 8, 48, 48)
         self.btn_gif_close.setStyleSheet("""
             QPushButton {
                 background: rgba(0, 0, 0, 0.45);
@@ -369,7 +392,7 @@ class CanaryWelcomeDialog(QDialog):
         self.btn_gif_close.clicked.connect(self.close)
 
         self.btn_skip_intro = QPushButton("Skip intro", widget)
-        self.btn_skip_intro.setGeometry(14, 10, 80, 26)
+        self.btn_skip_intro.setGeometry(14, 10, 112, 48)
         self.btn_skip_intro.setStyleSheet("""
             QPushButton {
                 background: rgba(0, 0, 0, 0.45);
@@ -388,7 +411,7 @@ class CanaryWelcomeDialog(QDialog):
 
         # Bottom Overlay container
         self.overlay_widget = QFrame(widget)
-        self.overlay_widget.setGeometry(0, 240, 638, 118)
+        self.overlay_widget.setGeometry(0, 340, 798, 138)
         self.overlay_widget.setStyleSheet("""
             QFrame {
                 background: qlineargradient(
@@ -429,7 +452,7 @@ class CanaryWelcomeDialog(QDialog):
         overlay_layout.addLayout(titles_layout, 1)
 
         self.btn_awake_next = QPushButton("Next →")
-        self.btn_awake_next.setFixedSize(120, 36)
+        self.btn_awake_next.setFixedSize(150, 48)
         self.btn_awake_next.setStyleSheet(self._btn_primary_style())
         self.btn_awake_next.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         overlay_layout.addWidget(self.btn_awake_next, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -457,7 +480,7 @@ class CanaryWelcomeDialog(QDialog):
 
         try:
             self.movie = QMovie(target_path)
-            self.movie.setScaledSize(QSize(638, 358))
+            self.movie.setScaledSize(QSize(798, 478))
             self.gif_label.setMovie(self.movie)
             self.movie.frameChanged.connect(self._on_gif_frame)
             self.movie.start()
@@ -521,7 +544,7 @@ class CanaryWelcomeDialog(QDialog):
         input_row.addWidget(self.txt_api_key, 1)
 
         self.btn_key_action = QPushButton("Validate" if cur_key else "Paste")
-        self.btn_key_action.setFixedHeight(34)
+        self.btn_key_action.setFixedHeight(48)
         self.btn_key_action.setStyleSheet(self._btn_secondary_style())
         self.btn_key_action.clicked.connect(self._handle_key_action)
         input_row.addWidget(self.btn_key_action)
@@ -558,13 +581,13 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.setSpacing(12)
 
         btn_back = QPushButton("← Back")
-        btn_back.setFixedHeight(36)
+        btn_back.setFixedHeight(48)
         btn_back.setStyleSheet(self._btn_secondary_style())
         btn_back.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         nav_row.addWidget(btn_back)
 
         btn_skip = QPushButton("Skip for Now")
-        btn_skip.setFixedHeight(36)
+        btn_skip.setFixedHeight(48)
         btn_skip.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -583,7 +606,7 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.addStretch()
 
         btn_next = QPushButton("Next →")
-        btn_next.setFixedSize(115, 36)
+        btn_next.setFixedSize(130, 48)
         btn_next.setStyleSheet(self._btn_primary_style())
         btn_next.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         nav_row.addWidget(btn_next)
@@ -794,13 +817,13 @@ class CanaryWelcomeDialog(QDialog):
         c2.addWidget(self.lbl_cmd_hint)
 
         self.btn_run_headcrab = QPushButton("Run Headcrab Installer")
-        self.btn_run_headcrab.setFixedHeight(34)
+        self.btn_run_headcrab.setFixedHeight(48)
         self.btn_run_headcrab.setStyleSheet(self._btn_secondary_style())
         self.btn_run_headcrab.clicked.connect(self._run_headcrab_installer)
         c2.addWidget(self.btn_run_headcrab)
 
         self.btn_recheck_sls = QPushButton("Check Again")
-        self.btn_recheck_sls.setFixedHeight(34)
+        self.btn_recheck_sls.setFixedHeight(48)
         self.btn_recheck_sls.setStyleSheet(self._btn_secondary_style())
         self.btn_recheck_sls.clicked.connect(self._check_sls_installation)
         c2.addWidget(self.btn_recheck_sls)
@@ -820,13 +843,13 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.setSpacing(12)
 
         btn_back = QPushButton("← Back")
-        btn_back.setFixedHeight(36)
+        btn_back.setFixedHeight(48)
         btn_back.setStyleSheet(self._btn_secondary_style())
         btn_back.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         nav_row.addWidget(btn_back)
 
         btn_skip = QPushButton("Skip for Now")
-        btn_skip.setFixedHeight(36)
+        btn_skip.setFixedHeight(48)
         btn_skip.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -845,7 +868,7 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.addStretch()
 
         btn_next = QPushButton("Next →")
-        btn_next.setFixedSize(115, 36)
+        btn_next.setFixedSize(130, 48)
         btn_next.setStyleSheet(self._btn_primary_style())
         btn_next.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         nav_row.addWidget(btn_next)
@@ -1051,13 +1074,13 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.setSpacing(12)
 
         btn_back = QPushButton("← Back")
-        btn_back.setFixedHeight(36)
+        btn_back.setFixedHeight(48)
         btn_back.setStyleSheet(self._btn_secondary_style())
         btn_back.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         nav_row.addWidget(btn_back)
 
         btn_skip = QPushButton("Skip for Now")
-        btn_skip.setFixedHeight(36)
+        btn_skip.setFixedHeight(48)
         btn_skip.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -1076,7 +1099,7 @@ class CanaryWelcomeDialog(QDialog):
         nav_row.addStretch()
 
         btn_next = QPushButton("Next →")
-        btn_next.setFixedSize(115, 36)
+        btn_next.setFixedSize(130, 48)
         btn_next.setStyleSheet(self._btn_primary_style())
         btn_next.clicked.connect(lambda: self._advance_to_preferences())
         nav_row.addWidget(btn_next)
@@ -1167,14 +1190,14 @@ class CanaryWelcomeDialog(QDialog):
         cfg_btn_row.setSpacing(8)
 
         self.btn_run_recheck = QPushButton("Re-check Config")
-        self.btn_run_recheck.setFixedHeight(34)
+        self.btn_run_recheck.setFixedHeight(48)
         self.btn_run_recheck.setStyleSheet(self._btn_secondary_style())
         self.btn_run_recheck.clicked.connect(self._run_config_check_async)
         cfg_btn_row.addWidget(self.btn_run_recheck)
 
         # Fix Config button: only enabled/shown if anything is wrong!
         self.btn_run_fix = QPushButton("Fix Config")
-        self.btn_run_fix.setFixedHeight(34)
+        self.btn_run_fix.setFixedHeight(48)
         self.btn_run_fix.setStyleSheet(self._btn_secondary_style())
         self.btn_run_fix.clicked.connect(self._run_config_repair)
         self.btn_run_fix.hide()  # hidden initially until issues detected
@@ -1184,7 +1207,7 @@ class CanaryWelcomeDialog(QDialog):
 
         c1.addWidget(QLabel("Interface Font:"))
         self.combo_font = QComboBox()
-        self.combo_font.setFixedHeight(30)
+        self.combo_font.setFixedHeight(48)
         self.combo_font.addItem("Open Sans (Default)", "Open Sans")
         self.combo_font.addItem("Google Sans", "Google Sans")
         self.combo_font.addItem("Roboto", "Roboto")
@@ -1194,10 +1217,6 @@ class CanaryWelcomeDialog(QDialog):
         if f_idx >= 0:
             self.combo_font.setCurrentIndex(f_idx)
         c1.addWidget(self.combo_font)
-
-        lbl_fsize_notice = QLabel("Note: Font size adjustment is currently broken.")
-        lbl_fsize_notice.setStyleSheet("font-size: 7.5pt; color: rgba(255,255,255,0.45);")
-        c1.addWidget(lbl_fsize_notice)
 
         c1.addStretch()
         cols.addLayout(c1, 1)
@@ -1220,7 +1239,7 @@ class CanaryWelcomeDialog(QDialog):
 
         c2.addWidget(QLabel("Default Download Behavior:"))
         self.combo_behavior = QComboBox()
-        self.combo_behavior.setFixedHeight(30)
+        self.combo_behavior.setFixedHeight(48)
         self.combo_behavior.addItem("Ask every time (Default)", "ask")
         self.combo_behavior.addItem("Always Native Steam (at0-m)", "native")
         self.combo_behavior.addItem("Always ASSella Downloader", "assella")
@@ -1237,7 +1256,7 @@ class CanaryWelcomeDialog(QDialog):
 
         c2.addWidget(QLabel("Default Download Location:"))
         self.combo_location = QComboBox()
-        self.combo_location.setFixedHeight(30)
+        self.combo_location.setFixedHeight(48)
         self.combo_location.addItem("Ask Every Time (Default)", "")
 
         from core import steam_helpers
@@ -1261,13 +1280,13 @@ class CanaryWelcomeDialog(QDialog):
         b_row.setSpacing(12)
 
         btn_back = QPushButton("← Back")
-        btn_back.setFixedHeight(36)
+        btn_back.setFixedHeight(48)
         btn_back.setStyleSheet(self._btn_secondary_style())
         btn_back.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         b_row.addWidget(btn_back)
 
         btn_recommended = QPushButton("Apply Recommended")
-        btn_recommended.setFixedHeight(36)
+        btn_recommended.setFixedHeight(48)
         btn_recommended.setStyleSheet(self._btn_secondary_style())
         btn_recommended.clicked.connect(self._apply_recommended_defaults)
         b_row.addWidget(btn_recommended)
@@ -1275,7 +1294,7 @@ class CanaryWelcomeDialog(QDialog):
         b_row.addStretch()
 
         btn_finish = QPushButton("Finish & Start Exploring")
-        btn_finish.setFixedSize(185, 36)
+        btn_finish.setFixedSize(215, 48)
         btn_finish.setStyleSheet(self._btn_primary_style())
         btn_finish.clicked.connect(self._save_and_finish)
         b_row.addWidget(btn_finish)

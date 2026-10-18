@@ -228,6 +228,7 @@ class LibraryFilterSortMixin:
         
         # Filter games by search term (case-insensitive)
         has_filter = False
+        query = ""
         if hasattr(self, "search_input"):
             query = self.search_input.text().strip().lower()
             if query:
@@ -243,6 +244,13 @@ class LibraryFilterSortMixin:
             truncated = True
         else:
             showing_games = games
+
+        if hasattr(self, "_set_empty_state"):
+            self._set_empty_state(
+                not showing_games,
+                searching=has_filter,
+                scanning=active_tab == TAB_STEAM and getattr(self, "_steam_scan_in_progress", False),
+            )
 
         # Insert a bounded number of widgets per event-loop turn so large
         # libraries do not freeze the Steam Deck UI.

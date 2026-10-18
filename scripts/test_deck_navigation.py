@@ -14,12 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from PyQt6.QtCore import Qt, QSettings, QTimer
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QApplication, QDialog, QPushButton, QWidget
+from PyQt6.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QWidget
 
 from ui.deck_ui.activity.domain import ActivitySnapshot
 from ui.deck_ui.activity.presentation import ActivityDialog
 from ui.deck_ui.install.presentation import DeckInstallFlow
 from ui.deck_ui.navigation import DeckNavigation
+from ui.deck_ui.widgets import DeckActionButton, DeckNotice
 
 
 class DeckNavigationTests(unittest.TestCase):
@@ -53,6 +54,28 @@ class DeckNavigationTests(unittest.TestCase):
         self.assertEqual(calls, ["back"])
         root.close()
 
+    def test_shoulders_change_sections_with_search_focused(self):
+        root = QWidget()
+        root.resize(350, 100)
+        search = QLineEdit(root)
+        search.move(10, 10)
+        first = QPushButton("First", root)
+        second = QPushButton("Second", root)
+        first.move(10, 50)
+        second.move(170, 50)
+        for button in (first, second):
+            button.setCheckable(True)
+        first.setChecked(True)
+        nav = DeckNavigation(root, sections=(first, second))
+        root.show()
+        root.activateWindow()
+        self.app.processEvents()
+        search.setFocus()
+        QTest.keyClick(search, Qt.Key.Key_PageDown)
+        self.assertTrue(second.isChecked())
+        self.assertTrue(second.hasFocus())
+        root.close()
+
     def test_guided_review_requires_final_action(self):
         flow = DeckInstallFlow(None, mock=True)
         flow.show()
@@ -72,6 +95,34 @@ class DeckNavigationTests(unittest.TestCase):
         flow._next()
         self.assertIn("No job was queued", flow.notice.label.text())
         flow.close()
+
+    def test_mock_install_rejects_empty_content_and_unavailable_card(self):
+        flow = DeckInstallFlow(None, mock=True, mock_state="missing-sd")
+        flow.show()
+        flow.discovery.findChildren(QPushButton)[0].click()
+        self.assertFalse(flow.selector.storage.model().item(1).isEnabled())
+        flow.selector.depot.setChecked(False)
+        flow._next()
+        self.assertEqual(flow.step, 1)
+        self.assertIn("at least one depot", flow.notice.label.text())
+        flow.selector.depot.setChecked(True)
+        flow._next()
+        self.assertEqual(flow.step, 2)
+        flow.close()
+
+    def test_notice_retry_is_large_and_only_visible_on_failure(self):
+        calls = []
+        notice = DeckNotice("Storage unavailable")
+        notice.show()
+        notice.setAction("Retry scan", lambda: calls.append("retry"))
+        self.assertTrue(notice.action_button.isVisible())
+        self.assertGreaterEqual(notice.action_button.minimumHeight(), 48)
+        notice.action_button.click()
+        self.assertEqual(calls, ["retry"])
+        notice.setAction("Retry scan", None)
+        self.assertFalse(notice.action_button.isVisible())
+        self.assertGreaterEqual(DeckActionButton("Action").minimumHeight(), 48)
+        notice.close()
 
     def test_production_discovery_embeds_without_starting_services(self):
         from ui.dialogs.fetchmanifest import FetchManifestDialog

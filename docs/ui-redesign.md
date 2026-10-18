@@ -21,8 +21,9 @@ closure restores focus to the entry point.
 
 ## Input and layout
 
-Target 1280x800 first and allow the layout to contract to 1280x720. Every
-interactive control receives `Qt.StrongFocus`, has a clear focused state, and
+Target 1280x800 first and allow the layout to contract to 1280x720. Primary
+touch actions are at least 48 logical pixels high. Every interactive control
+receives `Qt.StrongFocus`, has a clear focused and pressed state, and
 works through keyboard, touch, mouse, trackpad, and controller routing:
 
 | Control | Meaning |
@@ -46,8 +47,10 @@ downloads, queues, and game operations.
 `scripts/run_ui_mock.py` launches production UI widgets with deterministic
 in-memory state. It never touches Steam or external services. Run with
 `--deck` or `--deck-720` and optionally `--state loading|empty|error|missing-sd|large`.
-Home, Activity, the guided install shell, Library shell, and Game Details
-section rail are production widgets. Library rows and Game Details content are
+Use `--screen onboarding|confirmation` to inspect those production dialogs
+without changing user settings. Home, Activity, the guided install shell,
+Library shell and row widgets, and Game Details section rail are production
+widgets. Library data, artwork placeholders, and Game Details content are
 fixtures because the production screens scan storage and load external data.
 Physical controller, actual install, and real Deck Desktop/Gaming Mode checks
 remain release gates.

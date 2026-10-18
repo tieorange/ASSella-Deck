@@ -87,7 +87,7 @@ class _SeverityIcon(QWidget):
         glyph, colour = _SEVERITIES.get(severity, _SEVERITIES["information"])
         self._glyph = glyph
         self._colour = QColor(colour)
-        self.setFixedSize(34, 34)
+        self.setFixedSize(42, 42)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
     def paintEvent(self, event) -> None:
@@ -136,8 +136,8 @@ class ThemedMessageBox(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.setMinimumWidth(400)
-        self.setMaximumWidth(520)
+        self.setMinimumWidth(440)
+        self.setMaximumWidth(600)
 
         settings = get_settings()
         self.accent_color = (
@@ -212,7 +212,7 @@ class ThemedMessageBox(QDialog):
         )
         msg_lbl.setStyleSheet("""
             color: rgba(255, 255, 255, 0.90);
-            font-size: 9.5pt;
+            font-size: 11pt;
             line-height: 1.45;
         """)
 
@@ -244,7 +244,7 @@ class ThemedMessageBox(QDialog):
             )
             info_lbl.setStyleSheet("""
                 color: rgba(255, 255, 255, 0.62);
-                font-size: 8.5pt;
+                font-size: 10pt;
             """)
             info_row = QHBoxLayout()
             info_row.setContentsMargins(46, 0, 0, 0)
@@ -266,7 +266,7 @@ class ThemedMessageBox(QDialog):
                 border: none;
                 border-radius: 6px;
                 font-weight: 600;
-                font-size: 9pt;
+            font-size: 11pt;
                 padding: 6px 18px;
                 min-width: 75px;
             }}
@@ -286,7 +286,7 @@ class ThemedMessageBox(QDialog):
                 border: 1px solid rgba(255, 255, 255, 0.14);
                 border-radius: 6px;
                 font-weight: 500;
-                font-size: 9pt;
+            font-size: 11pt;
                 padding: 6px 18px;
                 min-width: 75px;
             }
@@ -330,7 +330,8 @@ class ThemedMessageBox(QDialog):
         """One themed button in the row; clicking it closes the dialog with ``value``."""
         btn = QPushButton(label)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setMinimumHeight(44)
+        btn.setMinimumHeight(52)
+        btn.setMinimumWidth(112)
         btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         btn.setStyleSheet(self._primary_style if primary else self._secondary_style)
         btn.setAutoDefault(False)

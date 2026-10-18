@@ -59,14 +59,28 @@ sha256_of() {
 }
 
 check_owned_paths() {
-    if [ -L "$INSTALL_DIR" ]; then
-        echo "Refusing a symlinked ASSella Deck install directory." >&2
-        return 1
-    fi
-    if [ -L "$APPIMAGE_PATH" ] || [ -L "$BACKUP_PATH" ]; then
-        echo "Refusing symlinked ASSella Deck AppImage paths." >&2
-        return 1
-    fi
+    command -v python3 >/dev/null 2>&1 || { echo "Python 3 is required." >&2; return 1; }
+    python3 - "$INSTALL_DIR" "$APPIMAGE_PATH" "$BACKUP_PATH" \
+        "$VERSION_PATH" "$INSTALL_DIR/version.previous" \
+        "$DESKTOP_PATH" "$ICON_PATH" "$DATA_HOME" "$HOME" <<'PY'
+import os
+import sys
+
+install_dir, *owned, data_home, home = sys.argv[1:]
+protected = [
+    os.path.realpath(os.path.join(root, name))
+    for root in (data_home, os.path.join(home, ".local", "share"))
+    for name in ("ACCELA", "ACCELA-Original", "ASSella")
+]
+if os.path.basename(os.path.realpath(data_home)) in ("ACCELA", "ACCELA-Original", "ASSella"):
+    protected.append(os.path.realpath(data_home))
+for path in (install_dir, *owned):
+    if os.path.islink(path):
+        sys.exit(f"Refusing symlinked ASSella Deck path: {path}")
+    resolved = os.path.realpath(path)
+    if any(os.path.commonpath((resolved, legacy)) == legacy for legacy in protected):
+        sys.exit(f"Refusing ASSella Deck path inside another app: {path}")
+PY
 }
 
 write_desktop_entry() {

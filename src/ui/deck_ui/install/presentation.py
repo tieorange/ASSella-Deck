@@ -5,21 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QButtonGroup, QDialog, QHBoxLayout, QLabel, QLineEdit, QRadioButton, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QButtonGroup, QCheckBox, QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QRadioButton, QStackedWidget, QVBoxLayout, QWidget
 
 from ..focus import configure_focus_order
 from ..navigation import DeckNavigation, FocusReturn
 from ..widgets import DeckActionButton, DeckCard, DeckNotice, DeckSectionTitle, DeckStepHeader
+from ..theme import BG, TEXT, TOUCH, field_style
 from .data import draft_from_selection, persist_draft
 
 
 class DeckInstallFlow(QDialog):
     STEPS = ("Find", "Build & depots", "Storage & backend", "Review")
 
-    def __init__(self, main_window, initial_query: str = "", *, mock: bool = False):
+    def __init__(self, main_window, initial_query: str = "", *, mock: bool = False, mock_state: str = "normal"):
         super().__init__(main_window)
         self.main_window = main_window
         self.mock = mock
+        self.mock_state = mock_state
         self._focus_return = FocusReturn()
         self.draft = None
         self._queued = False
@@ -28,7 +30,7 @@ class DeckInstallFlow(QDialog):
         self.setWindowTitle("Find and install · ASSella Deck")
         self.resize(1040, 620)
         self.setMinimumSize(720, 460)
-        self.setStyleSheet("QDialog { background:#111722; color:#f4f7fb; } QLabel { color:#f4f7fb; }")
+        self.setStyleSheet(f"QDialog {{ background:{BG}; color:{TEXT}; }} QLabel {{ color:{TEXT}; }}" + field_style())
         root = QVBoxLayout(self)
         root.setContentsMargins(22, 16, 22, 18)
         root.setSpacing(12)
@@ -88,7 +90,8 @@ class DeckInstallFlow(QDialog):
         layout = QVBoxLayout(page)
         layout.addWidget(DeckSectionTitle("Discover a game", "Fixture data for safe visual review."))
         page.search_input = QLineEdit("Hades")
-        page.search_input.setMinimumHeight(44)
+        page.search_input.setMinimumHeight(TOUCH)
+        page.search_input.setStyleSheet(field_style())
         layout.addWidget(page.search_input)
         fixture = DeckActionButton("Select Hades · App ID 1145360", primary=True)
         fixture.clicked.connect(lambda: self._on_manifest_ready((
@@ -116,8 +119,8 @@ class DeckInstallFlow(QDialog):
         self.assella_radio = QRadioButton("ASSella Downloader · use the selected depots and build")
         self.native_radio = QRadioButton("Steam client · hand off the download to Steam")
         for radio in (self.assella_radio, self.native_radio):
-            radio.setMinimumHeight(44)
-            radio.setStyleSheet("QRadioButton { color:#f4f7fb; font-size:11pt; spacing:10px; } QRadioButton:focus { border:2px solid #43d6c1; border-radius:8px; }")
+            radio.setMinimumHeight(TOUCH)
+            radio.setStyleSheet("QRadioButton { color:#f4f7fb; font-size:11pt; spacing:12px; padding:8px; } QRadioButton:focus { border:2px solid #43d6c1; border-radius:8px; }")
             card_layout.addWidget(radio)
         self.assella_radio.setChecked(True)
         if not self.mock:
@@ -149,11 +152,20 @@ class DeckInstallFlow(QDialog):
         card_layout.setContentsMargins(20, 16, 20, 16)
         card_layout.setSpacing(9)
         self.review_labels = []
+        self.review_keys = []
         for _ in range(6):
-            label = QLabel()
-            label.setStyleSheet("font-size:11pt; color:#f4f7fb;")
-            card_layout.addWidget(label)
-            self.review_labels.append(label)
+            row = QHBoxLayout()
+            key = QLabel()
+            key.setMinimumWidth(110)
+            key.setStyleSheet("font-size:10.5pt; color:#b8cad5; font-weight:700;")
+            value = QLabel()
+            value.setWordWrap(True)
+            value.setStyleSheet("font-size:11pt; color:#f4f7fb; font-weight:650;")
+            row.addWidget(key)
+            row.addWidget(value, 1)
+            card_layout.addLayout(row)
+            self.review_keys.append(key)
+            self.review_labels.append(value)
         layout.addWidget(card)
         layout.addStretch()
         return page
@@ -170,7 +182,7 @@ class DeckInstallFlow(QDialog):
             self.selector.show()
         if step == 2:
             if self.mock:
-                self.storage_label.setText("Selected storage: Internal storage · 118 GB free")
+                self.storage_label.setText(f"Selected storage: {self.selector.get_storage_label()}")
             else:
                 from ui.dialogs.depot_selection.storage_targets import describe
                 target = describe(self.draft.storage)
@@ -178,8 +190,15 @@ class DeckInstallFlow(QDialog):
                 self.storage_label.setText(f"Selected storage: {target.label}{free}\n{self.draft.storage}")
             self.assella_radio.setFocus()
         elif step == 3:
-            for label, text in zip(self.review_labels, self.draft.review_lines()):
-                label.setText(text)
+            if self.mock:
+                storage_label = self.selector.get_storage_label()
+            else:
+                from ui.dialogs.depot_selection.storage_targets import describe
+                target = describe(self.draft.storage)
+                storage_label = target.label + (f" · {target.free}" if target.free else "")
+            for key, value, (title, text) in zip(self.review_keys, self.review_labels, self.draft.review_items(storage_label)):
+                key.setText(title)
+                value.setText(text)
             self.next_button.setFocus()
 
     def _on_manifest_ready(self, payload):
@@ -189,7 +208,7 @@ class DeckInstallFlow(QDialog):
             self.stack.removeWidget(self.selector)
             self.selector.deleteLater()
         if self.mock:
-            self.selector = _MockSelector()
+            self.selector = _MockSelector(missing_sd=self.mock_state == "missing-sd")
         else:
             from ui.dialogs.depotselection import DepotSelectionDialog
             self.selector = DepotSelectionDialog(
@@ -305,21 +324,53 @@ class DeckInstallFlow(QDialog):
 
 
 class _MockSelector(QWidget):
-    def __init__(self):
+    def __init__(self, *, missing_sd: bool = False):
         super().__init__()
         layout = QVBoxLayout(self)
-        layout.addWidget(DeckSectionTitle("Hades · content and build", "One base game depot selected."))
-        layout.addWidget(DeckNotice("Build 123456 · Internal storage · 118 GB free"))
+        layout.setSpacing(12)
+        layout.addWidget(DeckSectionTitle("Hades · content and build", "Choose a branch, build, content, and storage."))
+        card = DeckCard()
+        fields = QVBoxLayout(card)
+        fields.setContentsMargins(20, 16, 20, 16)
+        fields.setSpacing(10)
+        self.branch = QComboBox()
+        self.branch.addItems(("public", "beta"))
+        self.build = QComboBox()
+        self.build.addItems(("Latest available", "Build 123456"))
+        self.depot = QCheckBox("Base game depot · 1145361")
+        self.depot.setChecked(True)
+        self.storage = QComboBox()
+        self.storage.addItem("Internal storage · 118 GB free", "/mock/internal/SteamLibrary")
+        self.storage.addItem("microSD · 72 GB free" if not missing_sd else "microSD unavailable", "/mock/microSD/SteamLibrary")
+        if missing_sd:
+            self.storage.model().item(1).setEnabled(False)
+        for title, control in (("Branch", self.branch), ("Build", self.build), ("Content", self.depot), ("Storage", self.storage)):
+            label = QLabel(title)
+            label.setStyleSheet("color:#b8cad5; font-size:10pt; font-weight:700;")
+            fields.addWidget(label)
+            control.setMinimumHeight(TOUCH)
+            if isinstance(control, QComboBox):
+                control.setStyleSheet(field_style())
+            else:
+                control.setStyleSheet("QCheckBox { color:#f4f7fb; font-size:11pt; spacing:12px; padding:8px; } QCheckBox:focus { border:2px solid #43d6c1; }")
+            fields.addWidget(control)
+        layout.addWidget(card)
         layout.addStretch()
 
     def get_selected_depots(self):
-        return ["1145361"]
+        return ["1145361"] if self.depot.isChecked() else []
 
     def get_selected_storage(self):
-        return "/mock/internal/SteamLibrary"
+        return self.storage.currentData()
+
+    def get_storage_label(self):
+        return self.storage.currentText()
 
     def get_selected_branch(self):
-        return "public"
+        return self.branch.currentText()
 
     def is_build_pinned(self):
-        return False
+        return self.build.currentIndex() == 1
+
+    def get_selected_build(self):
+        return "123456" if self.is_build_pinned() else ""

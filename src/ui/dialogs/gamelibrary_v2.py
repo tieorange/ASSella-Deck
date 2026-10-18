@@ -322,8 +322,8 @@ class GameDetailsDialogV2(QDialog):
             btn = QPushButton(label)
             btn.setFlat(True)
             btn.setCheckable(True)
-            btn.setMinimumHeight(44)
-            btn.setStyleSheet("border: none; border-radius: 8px; padding: 0px 13px; font-size: 10pt; text-align:left;")
+            btn.setMinimumHeight(52)
+            btn.setStyleSheet("border: 1px solid #435768; border-radius: 8px; padding: 0px 13px; font-size: 11pt; text-align:left;")
             btn.clicked.connect(lambda _c, i=idx: self._switch_tab(i))
             btn.toggled.connect(lambda checked, i=idx: self._switch_tab(i) if checked and self.stacked.currentIndex() != i else None)
             tab_bar_layout.addWidget(btn)
@@ -341,7 +341,7 @@ class GameDetailsDialogV2(QDialog):
 
         close_btn = QPushButton("✕ Close")
         close_btn.setFlat(True)
-        close_btn.setMinimumHeight(42)
+        close_btn.setMinimumHeight(48)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 border: none; border-radius: 0;
@@ -354,11 +354,13 @@ class GameDetailsDialogV2(QDialog):
         tab_bar_layout.addWidget(close_btn)
 
         tab_scroll = QScrollArea()
+        from ui.deck_ui.navigation import enable_touch_scrolling
+        enable_touch_scrolling(tab_scroll)
         tab_scroll.setWidgetResizable(True)
         tab_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         tab_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         tab_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        tab_scroll.setFixedWidth(180)
+        tab_scroll.setFixedWidth(194)
         tab_scroll.setWidget(tab_bar_frame)
 
         # Stacked content
@@ -393,9 +395,9 @@ class GameDetailsDialogV2(QDialog):
                 btn.setChecked(True)
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        border: none; border-radius: 0;
+                        border: 1px solid #43d6c1; border-radius: 8px;
                         border-left: 3px solid {self.accent_color};
-                        padding: 0px 12px; font-size: 10pt; text-align:left;
+                        padding: 0px 12px; font-size: 11pt; text-align:left;
                         color: {self.accent_color};
                         font-weight: bold;
                     }}
@@ -405,8 +407,8 @@ class GameDetailsDialogV2(QDialog):
                 btn.setChecked(False)
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        border: none; border-radius: 0;
-                        padding: 0px 12px; font-size: 10pt; text-align:left;
+                        border: 1px solid #435768; border-radius: 8px;
+                        padding: 0px 12px; font-size: 11pt; text-align:left;
                         color: {ink_on(self.background_color, 0.65)};
                     }}
                     QPushButton:hover {{ color: {self.accent_color}; }}

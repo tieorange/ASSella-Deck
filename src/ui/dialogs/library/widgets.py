@@ -248,6 +248,17 @@ class GameItemWidget(QWidget):
         size_label.setStyleSheet("color: rgba(255, 255, 255, 0.65); font-size: 12px;")
         info_layout.addWidget(size_label)
 
+        library_path = str(self.game_data.get("library_path") or self.game_data.get("install_path") or "")
+        storage = self.game_data.get("storage_label")
+        if not storage and library_path:
+            storage = "Removable storage" if "/run/media/" in library_path or "/media/" in library_path else "Internal storage"
+        default_source = "Steam" if self.game_data.get("is_steam_tab") else "AT0-M" if self.game_data.get("is_atom") else "ACCELA"
+        source = str(self.game_data.get("source") or default_source)
+        if storage or source:
+            location_label = QLabel(" · ".join(part for part in (source, storage) if part))
+            location_label.setStyleSheet("color:#b8cad5; font-size:10pt;")
+            info_layout.addWidget(location_label)
+
         # Check if this item belongs to the Steam (Beta) tab
         is_steam_tab = (
             (self.parent_dialog and getattr(self.parent_dialog, "_active_tab", "") == "steam")

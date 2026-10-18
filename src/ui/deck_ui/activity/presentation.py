@@ -1,10 +1,10 @@
 """Controller friendly queue and current task screen."""
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QListWidget, QProgressBar, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, QTimer, QSize
+from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QProgressBar, QVBoxLayout, QWidget
 
 from ..focus import configure_focus_order
-from ..navigation import DeckNavigation, FocusReturn
+from ..navigation import DeckNavigation, FocusReturn, enable_touch_scrolling
 from ..widgets import DeckActionButton, DeckCard, DeckSectionTitle
 from .data import snapshot_from_main_window
 from .domain import ActivitySnapshot
@@ -26,7 +26,7 @@ class ActivityDialog(QDialog):
         self.setWindowTitle("Activity · ASSella Deck")
         self.resize(840, 650)
         self.setMinimumSize(640, 460)
-        self.setStyleSheet("QDialog { background: #111722; color: #f4f7fb; } QLabel { color: #f4f7fb; }")
+        self.setStyleSheet("QDialog { background: #101823; color: #f4f7fb; } QLabel { color: #f4f7fb; }")
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 20, 24, 20)
         root.setSpacing(16)
@@ -34,6 +34,7 @@ class ActivityDialog(QDialog):
         current = DeckCard()
         current_layout = QVBoxLayout(current)
         current_layout.setContentsMargins(20, 18, 20, 18)
+        current_layout.addWidget(DeckSectionTitle("Current work"))
         self.active_name = QLabel()
         self.active_name.setStyleSheet("font-size: 18pt; font-weight: 800;")
         self.active_status = QLabel()
@@ -61,10 +62,11 @@ class ActivityDialog(QDialog):
         self.failure.setWordWrap(True)
         self.failure.setStyleSheet("color:#ffbaa9; padding:8px;")
         root.addWidget(self.failure)
-        root.addWidget(DeckSectionTitle("Up next"))
+        root.addWidget(DeckSectionTitle("Up next", "Select a queued game to manage it."))
         self.queue_list = QListWidget()
+        enable_touch_scrolling(self.queue_list)
         self.queue_list.currentRowChanged.connect(lambda row: self.remove_button.setEnabled(row >= 0) if hasattr(self, "remove_button") else None)
-        self.queue_list.setStyleSheet("QListWidget { background:#1e2530; border:1px solid #384a5b; border-radius:12px; padding:8px; color:white; font-size:11pt; } QListWidget::item { padding:9px; } QListWidget::item:selected { background:#275c61; border-radius:7px; }")
+        self.queue_list.setStyleSheet("QListWidget { background:#1c2836; border:1px solid #506374; border-radius:12px; padding:8px; color:white; font-size:11pt; } QListWidget::item { padding:12px; border-radius:8px; } QListWidget::item:selected { background:#275c61; } QListWidget::item:hover { background:#304458; }")
         root.addWidget(self.queue_list, 1)
         footer = QHBoxLayout()
         self.remove_button = DeckActionButton("Remove selected")
@@ -101,7 +103,10 @@ class ActivityDialog(QDialog):
         if tuple(self.queue_list.item(i).text() for i in range(self.queue_list.count())) != state.queued:
             row = self.queue_list.currentRow()
             self.queue_list.clear()
-            self.queue_list.addItems(state.queued)
+            for game in state.queued:
+                item = QListWidgetItem(game)
+                item.setSizeHint(QSize(0, 56))
+                self.queue_list.addItem(item)
             if row >= 0 and row < self.queue_list.count():
                 self.queue_list.setCurrentRow(row)
         self.remove_button.setEnabled(self.queue_list.currentRow() >= 0)

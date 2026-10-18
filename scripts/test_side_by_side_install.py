@@ -106,6 +106,8 @@ class SideBySideInstallerTests(unittest.TestCase):
         fork = self.data / "ASSella-Deck"
         self.assertEqual((fork / ASSET).read_bytes(), b"fork first\n")
         self.assertIn("Name=ASSella Deck", (self.data / "applications/assella-deck.desktop").read_text())
+        self.run_installer("--install")
+        self.assertEqual((fork / ASSET).read_bytes(), b"fork first\n")
         (fork / "user-data.json").write_text("keep")
 
         self.release("v3.0.0-beta.2", b"fork second\n")
@@ -130,11 +132,51 @@ class SideBySideInstallerTests(unittest.TestCase):
         (self.fixture / "releases.json").write_text("[]")
         self.run_installer("--update", success=False)
         self.assertEqual(fork_image.read_bytes(), b"working fork\n")
+        (self.fixture / "releases.json").unlink()
+        self.run_installer("--update", success=False)
+        self.assertEqual(fork_image.read_bytes(), b"working fork\n")
 
     def test_symlinked_install_directory_is_refused(self):
         (self.data / "ASSella-Deck").symlink_to(self.data / "ACCELA", target_is_directory=True)
         self.release("v3.0.0-beta.1", b"fork\n")
         self.run_installer("--install", success=False)
+
+    def test_symlinked_owned_launcher_icon_and_version_are_refused(self):
+        self.release("v3.0.0-beta.1", b"fork\n")
+        fork = self.data / "ASSella-Deck"
+        fork.mkdir()
+        targets = (
+            (self.data / "applications/assella-deck.desktop", self.data / "applications/assella.desktop"),
+            (self.data / "icons/hicolor/256x256/apps/assella-deck.png", self.data / "icons/hicolor/256x256/apps/assella.png"),
+            (fork / "version", self.data / "ACCELA/ASSella.AppImage"),
+        )
+        for owned, legacy in targets:
+            with self.subTest(path=owned):
+                owned.symlink_to(legacy)
+                self.run_installer("--install", success=False)
+                self.assertTrue(owned.is_symlink())
+                owned.unlink()
+
+    def test_data_root_inside_accela_is_refused(self):
+        self.release("v3.0.0-beta.1", b"fork\n")
+        self.env["XDG_DATA_HOME"] = str(self.data / "ACCELA")
+        self.run_installer("--install", success=False)
+        self.assertFalse((self.data / "ACCELA/ASSella-Deck").exists())
+
+    def test_upstream_or_stable_release_is_not_installed(self):
+        self.release("v3.0.0-beta.1", b"not the fork\n")
+        releases = json.loads((self.fixture / "releases.json").read_text())
+        for asset in releases[0]["assets"]:
+            asset["browser_download_url"] = asset["browser_download_url"].replace(
+                "tieorange/ASSella-Deck", "niwia/ASSella"
+            )
+        (self.fixture / "releases.json").write_text(json.dumps(releases))
+        self.run_installer("--install", success=False)
+        self.assertFalse((self.data / "ASSella-Deck" / ASSET).exists())
+
+        self.release("v3.0.0", b"stable fork\n")
+        self.run_installer("--install", success=False)
+        self.assertFalse((self.data / "ASSella-Deck" / ASSET).exists())
 
 
 if __name__ == "__main__":

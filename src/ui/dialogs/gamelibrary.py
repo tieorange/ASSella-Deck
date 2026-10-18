@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QPushButton,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -251,7 +252,9 @@ class GameLibraryDialog(
         window_layout.addWidget(content_widget, 1)
 
         from ui.deck_ui.widgets import DeckNotice, DeckSectionTitle
-        layout.addWidget(DeckSectionTitle("Game Library", "Browse installed games across internal storage and microSD."))
+        title_row = QHBoxLayout()
+        title_row.addWidget(DeckSectionTitle("Game Library", "Browse installed games across internal storage and microSD."), 1)
+        layout.addLayout(title_row)
 
         applist_2_0_enabled = self.applist_2_0_enabled
 
@@ -260,7 +263,7 @@ class GameLibraryDialog(
         top_layout.setContentsMargins(0, 0, 0, 0)
 
         self.scan_button = QPushButton("Scan Libraries")
-        self.scan_button.setMinimumHeight(40)
+        self.scan_button.setMinimumHeight(48)
         self.scan_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.scan_button.clicked.connect(self._scan_for_games)
 
@@ -294,17 +297,17 @@ class GameLibraryDialog(
         self.select_mode_button.clicked.connect(self._toggle_select_mode)
 
         if applist_2_0_enabled:
-            self.search_input.setFixedWidth(220)
-            self.search_input.setFixedHeight(36)
+            self.search_input.setFixedWidth(280)
+            self.search_input.setFixedHeight(48)
             self.search_input.setStyleSheet(
                 f"""
                 QLineEdit {{
-                    background-color: rgba(255, 255, 255, 0.05);
+                    background-color: #1c2836;
                     color: #FFFFFF;
-                    border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 18px;
+                    border: 1px solid #536473;
+                    border-radius: 10px;
                     padding: 0px 16px;
-                    font-size: 12px;
+                    font-size: 11pt;
                 }}
                 QLineEdit:focus {{
                     border: 2px solid {self.accent_color};
@@ -313,16 +316,16 @@ class GameLibraryDialog(
                 }}
                 """
             )
-            self.sort_combo.setFixedHeight(36)
+            self.sort_combo.setFixedHeight(48)
             self.sort_combo.setStyleSheet(
                 f"""
                 QComboBox {{
-                    background-color: rgba(255, 255, 255, 0.05);
+                    background-color: #1c2836;
                     color: #FFFFFF;
                     border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 18px;
+                    border-radius: 10px;
                     padding: 0px 16px;
-                    font-size: 12px;
+                    font-size: 11pt;
                 }}
                 QComboBox:hover {{
                     background-color: rgba(255, 255, 255, 0.08);
@@ -343,17 +346,17 @@ class GameLibraryDialog(
                 }}
                 """
             )
-            self.select_mode_button.setFixedWidth(85)
-            self.select_mode_button.setFixedHeight(36)
+            self.select_mode_button.setFixedWidth(100)
+            self.select_mode_button.setFixedHeight(48)
             self.select_mode_button.setStyleSheet(
                 f"""
                 QPushButton {{
                     background-color: rgba(255, 255, 255, 0.05);
                     color: #FFFFFF;
                     border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 18px;
+                    border-radius: 10px;
                     padding: 0px 16px;
-                    font-size: 12px;
+                    font-size: 11pt;
                     font-weight: bold;
                 }}
                 QPushButton:hover {{
@@ -376,16 +379,16 @@ class GameLibraryDialog(
                 "Scan for user-provided .lua files in the cached_luas folder "
                 "that are not yet registered in the library"
             )
-            self.scan_imports_button.setFixedHeight(36)
+            self.scan_imports_button.setFixedHeight(48)
             self.scan_imports_button.setStyleSheet(
                 f"""
                 QPushButton {{
                     background-color: rgba(255, 255, 255, 0.05);
                     color: #FFFFFF;
                     border: 1px solid rgba(255, 255, 255, 0.12);
-                    border-radius: 18px;
+                    border-radius: 10px;
                     padding: 0px 16px;
-                    font-size: 12px;
+                    font-size: 11pt;
                 }}
                 QPushButton:hover {{
                     background-color: rgba(255, 255, 255, 0.08);
@@ -418,10 +421,7 @@ class GameLibraryDialog(
             top_layout.addWidget(self.sort_combo)
             top_layout.addWidget(self.select_mode_button)
 
-        header_actions = QHBoxLayout()
-        header_actions.addWidget(self.scan_button)
-        header_actions.addStretch()
-        layout.addLayout(header_actions)
+        title_row.addWidget(self.scan_button)
         layout.addLayout(top_layout)
 
         self.library_notice = DeckNotice("Cached games remain available while the library refreshes.")
@@ -434,12 +434,37 @@ class GameLibraryDialog(
 
         # --- Games List ---
         self.games_list = QListWidget()
+        from ui.deck_ui.navigation import enable_touch_scrolling
+        enable_touch_scrolling(self.games_list)
         self.games_list.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.games_list.setSpacing(2)
         self.games_list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.games_list.verticalScrollBar().valueChanged.connect(self._start_pending_image_fetches)
         self.games_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        layout.addWidget(self.games_list)
+        self.results_stack = QStackedWidget()
+        self.results_stack.addWidget(self.games_list)
+        self.empty_panel = QWidget()
+        empty_layout = QVBoxLayout(self.empty_panel)
+        empty_layout.setContentsMargins(24, 24, 24, 24)
+        empty_layout.setSpacing(12)
+        empty_layout.addStretch()
+        self.empty_title = QLabel("No games yet")
+        self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_title.setStyleSheet("color:#f4f7fb; font-size:18pt; font-weight:800;")
+        self.empty_detail = QLabel("Scan your libraries or find a game to get started.")
+        self.empty_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_detail.setWordWrap(True)
+        self.empty_detail.setStyleSheet("color:#b8cad5; font-size:11pt;")
+        from ui.deck_ui.widgets import DeckActionButton
+        self.empty_action = DeckActionButton("Find a Game", primary=True)
+        self.empty_action.setMinimumWidth(210)
+        self.empty_action.clicked.connect(self._open_empty_action)
+        empty_layout.addWidget(self.empty_title)
+        empty_layout.addWidget(self.empty_detail)
+        empty_layout.addWidget(self.empty_action, alignment=Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addStretch()
+        self.results_stack.addWidget(self.empty_panel)
+        layout.addWidget(self.results_stack)
 
         # --- Selection FAB (floating button) ---
         self.selection_fab = QPushButton("Actions  ▼", self)
@@ -543,7 +568,7 @@ class GameLibraryDialog(
         layout.addWidget(self.info_label)
         action_row = QHBoxLayout()
         self.open_selected_button = QPushButton("Open Game Details")
-        self.open_selected_button.setMinimumHeight(44)
+        self.open_selected_button.setMinimumHeight(48)
         self.open_selected_button.setEnabled(False)
         self.open_selected_button.clicked.connect(self._open_selected_game)
         action_row.addStretch()
@@ -584,6 +609,31 @@ class GameLibraryDialog(
         item = self.games_list.currentItem()
         if item is not None:
             self._on_item_double_clicked(item)
+
+    def _set_empty_state(self, empty: bool, *, searching: bool = False, scanning: bool = False) -> None:
+        if not empty:
+            self.results_stack.setCurrentWidget(self.games_list)
+            return
+        self.results_stack.setCurrentWidget(self.empty_panel)
+        if scanning:
+            title, detail = "Scanning libraries…", "Games will appear here when discovery finishes."
+        elif searching:
+            title, detail = "No matching games", "Try another name or clear the search."
+        else:
+            title, detail = "No games yet", "Scan your libraries or find a game to get started."
+        self.empty_title.setText(title)
+        self.empty_detail.setText(detail)
+        self.empty_action.setText("Clear search" if searching else "Find a Game")
+        self.empty_action.setVisible(not scanning)
+
+    def _open_empty_action(self) -> None:
+        if self.search_input.text():
+            self.search_input.clear()
+            self.search_input.setFocus()
+            return
+        open_flow = getattr(self.main_window, "open_fetch_dialog", None) or getattr(self.main_window, "show_find_placeholder", None)
+        if callable(open_flow):
+            open_flow()
 
     def done(self, result):
         self._focus_return.restore()

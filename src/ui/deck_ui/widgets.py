@@ -3,6 +3,8 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from .theme import TEXT, TOUCH, button_style
+
 
 class DeckCard(QFrame):
     """An elevated content surface with a consistent controller focus outline."""
@@ -14,7 +16,7 @@ class DeckCard(QFrame):
         self.setStyleSheet(
             """
             QFrame#deckCard {
-                background: rgba(30, 37, 48, 0.94);
+                background: #1c2836;
                 border: 1px solid rgba(255, 255, 255, 0.11);
                 border-radius: 14px;
             }
@@ -31,27 +33,10 @@ class DeckActionButton(QPushButton):
     def __init__(self, text: str, *, primary: bool = False, parent: QWidget | None = None):
         super().__init__(text, parent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setMinimumHeight(44)
+        self.setMinimumHeight(TOUCH)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        if primary:
-            self.setObjectName("deckPrimaryAction")
-            background = "#43d6c1"
-            foreground = "#061b1b"
-        else:
-            self.setObjectName("deckSecondaryAction")
-            background = "rgba(255, 255, 255, 0.08)"
-            foreground = "#f4f7fb"
-        self.setStyleSheet(
-            f"""
-            QPushButton {{
-                background: {background}; color: {foreground}; border: 1px solid rgba(255, 255, 255, 0.14);
-                border-radius: 10px; padding: 0 18px; font-size: 11pt; font-weight: 700;
-            }}
-            QPushButton:hover {{ background: rgba(83, 222, 202, 0.86); color: #061b1b; }}
-            QPushButton:focus {{ border: 3px solid #f4f7fb; }}
-            QPushButton:disabled {{ background: rgba(255,255,255,0.05); color: rgba(244,247,251,0.38); }}
-            """
-        )
+        self.setObjectName("deckPrimaryAction" if primary else "deckSecondaryAction")
+        self.setStyleSheet(button_style(primary=primary))
 
 
 class DeckSectionTitle(QWidget):
@@ -63,12 +48,12 @@ class DeckSectionTitle(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         heading = QLabel(title)
-        heading.setStyleSheet("color: #f4f7fb; font-size: 15pt; font-weight: 800;")
+        heading.setStyleSheet(f"color: {TEXT}; font-size: 16pt; font-weight: 800;")
         layout.addWidget(heading)
         if description:
             subtitle = QLabel(description)
             subtitle.setWordWrap(True)
-            subtitle.setStyleSheet("color: rgba(244,247,251,0.65); font-size: 10pt;")
+            subtitle.setStyleSheet("color: #b8cad5; font-size: 10.5pt;")
             layout.addWidget(subtitle)
 
 
@@ -78,16 +63,40 @@ class DeckNotice(QFrame):
     def __init__(self, text: str = "", parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("deckNotice")
-        self.setStyleSheet("QFrame#deckNotice { background:#1d3040; border:1px solid #315469; border-radius:10px; }")
+        self.setStyleSheet("QFrame#deckNotice { background:#1d3040; border:1px solid #467087; border-radius:10px; }")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(14, 10, 14, 10)
         self.label = QLabel(text)
         self.label.setWordWrap(True)
-        self.label.setStyleSheet("color:#d3e6f1; font-size:10pt;")
+        self.label.setStyleSheet("color:#dcecf5; font-size:10.5pt;")
         layout.addWidget(self.label)
+        self.action_button = DeckActionButton("Retry")
+        self.action_button.setMaximumWidth(170)
+        self.action_button.setVisible(False)
+        self._action_callback = None
+        layout.addWidget(self.action_button)
 
     def setText(self, text: str):
         self.label.setText(text)
+
+    def setTone(self, tone: str):
+        border, background, foreground = {
+            "warning": ("#9b7840", "#332c22", "#f6d79c"),
+            "error": ("#a85e58", "#392726", "#ffd0c8"),
+        }.get(tone, ("#467087", "#1d3040", "#dcecf5"))
+        self.setStyleSheet(
+            f"QFrame#deckNotice {{ background:{background}; border:1px solid {border}; border-radius:10px; }}"
+        )
+        self.label.setStyleSheet(f"color:{foreground}; font-size:10.5pt;")
+
+    def setAction(self, text: str, callback=None):
+        if self._action_callback is not None:
+            self.action_button.clicked.disconnect(self._action_callback)
+        self._action_callback = callback
+        if callback is not None:
+            self.action_button.setText(text)
+            self.action_button.clicked.connect(callback)
+        self.action_button.setVisible(callback is not None)
 
 
 class DeckStepHeader(QWidget):

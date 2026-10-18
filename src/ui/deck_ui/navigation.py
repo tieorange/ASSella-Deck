@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QObject, QEvent, Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QAbstractItemView, QAbstractSpinBox, QComboBox, QLineEdit, QSlider, QTextEdit, QWidget
+from PyQt6.QtWidgets import QApplication, QAbstractItemView, QAbstractScrollArea, QAbstractSpinBox, QComboBox, QLineEdit, QScroller, QSlider, QTextEdit, QWidget
 
 from .focus import activate_focused, move_focus
+
+
+def enable_touch_scrolling(area: QAbstractScrollArea) -> None:
+    """Allow a finger drag to scroll Qt item views and scroll areas on Deck."""
+    QScroller.grabGesture(area.viewport(), QScroller.ScrollerGestureType.TouchGesture)
 
 
 class DeckNavigation(QObject):
@@ -34,6 +39,16 @@ class DeckNavigation(QObject):
             if callable(self.back):
                 self.back()
                 return True
+        if key in (Qt.Key.Key_PageUp, Qt.Key.Key_PageDown) and self.sections:
+            visible = [widget for widget in self.sections if widget.isVisible() and widget.isEnabled()]
+            if not visible:
+                return False
+            active = next((i for i, widget in enumerate(visible) if widget.isChecked()), 0)
+            delta = -1 if key == Qt.Key.Key_PageUp else 1
+            target = visible[(active + delta) % len(visible)]
+            target.setFocus()
+            target.click()
+            return True
         if editing:
             return False
         if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Left, Qt.Key.Key_Right):
@@ -47,16 +62,6 @@ class DeckNavigation(QObject):
                 return True
         if key == Qt.Key.Key_Menu and callable(self.actions):
             self.actions()
-            return True
-        if key in (Qt.Key.Key_PageUp, Qt.Key.Key_PageDown) and self.sections:
-            visible = [widget for widget in self.sections if widget.isVisible() and widget.isEnabled()]
-            if not visible:
-                return False
-            active = next((i for i, widget in enumerate(visible) if widget.isChecked()), 0)
-            delta = -1 if key == Qt.Key.Key_PageUp else 1
-            target = visible[(active + delta) % len(visible)]
-            target.setFocus()
-            target.click()
             return True
         return False
 

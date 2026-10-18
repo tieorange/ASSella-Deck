@@ -68,6 +68,9 @@ class LibraryTabBar(QWidget):
             TAB_ATOM: self.btn_atom,
             TAB_STEAM: self.btn_steam,
         }
+        for button in self._buttons.values():
+            button.setMinimumHeight(48)
+            button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         layout.addWidget(self.btn_accela)
         layout.addWidget(self.btn_atom)
@@ -83,11 +86,10 @@ class LibraryTabBar(QWidget):
                 background-color: rgba(255, 255, 255, 0.05);
                 color: rgba(255, 255, 255, 0.7);
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 5px 16px;
-                font-size: 11px;
+                border-radius: 10px;
+                padding: 8px 18px;
+                font-size: 11pt;
                 font-weight: 600;
-                min-height: 20px;
             }}
             QPushButton:hover {{
                 background-color: rgba(255, 255, 255, 0.1);
@@ -101,6 +103,7 @@ class LibraryTabBar(QWidget):
                 font-weight: bold;
             }}
             QPushButton:focus {{ border: 3px solid #43d6c1; }}
+            QPushButton:pressed {{ background-color: #2bac9d; color: #061b1b; }}
         """
         for btn in self._buttons.values():
             btn.setStyleSheet(style)
