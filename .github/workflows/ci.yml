@@ -2,9 +2,9 @@ name: CI - Code Health & Syntax
 
 on:
   push:
-    branches: [ main, beta, canary ]
+    branches: [ main, beta, canary, 'deck/beta' ]
   pull_request:
-    branches: [ main, beta, canary ]
+    branches: [ main, beta, canary, 'deck/beta' ]
   workflow_dispatch:
 
 jobs:
@@ -172,7 +172,7 @@ jobs:
                        test_manifest_dump test_dump_runner \
                        test_storage_targets test_depot_metadata \
                        test_executable_probe test_selection_policy \
-                       test_library_actions \
+                       test_library_actions test_deck_library \
                        test_silent_exception_gate \
                        test_native_dialog_gate \
                        test_themed_dialog_gate \

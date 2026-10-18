@@ -322,6 +322,24 @@ def parse_library_folders(vdf_path):
     return library_paths
 
 
+def get_unavailable_steam_libraries():
+    """Return configured Steam library roots whose steamapps directory is absent."""
+    steam_path = find_steam_install()
+    if not steam_path:
+        return []
+    vdf_path = os.path.join(steam_path, "steamapps", "libraryfolders.vdf")
+    try:
+        with open(vdf_path, "r", encoding="utf-8") as source:
+            content = source.read()
+    except OSError:
+        return []
+    paths = re.findall(r'^\s*"path"\s*"(.*?)"', content, re.MULTILINE)
+    return sorted({
+        path.replace("\\\\", "\\") for path in paths
+        if not os.path.isdir(os.path.join(path.replace("\\\\", "\\"), "steamapps"))
+    })
+
+
 def get_steam_libraries():
     steam_path = find_steam_install()
     if not steam_path:

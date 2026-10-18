@@ -511,6 +511,7 @@ class GameLibraryDialog(
         self.game_manager.scan_complete.connect(
             self._on_scan_complete, Qt.ConnectionType.UniqueConnection
         )
+        self.game_manager.scan_failed.connect(self._on_scan_failed)
         self.game_manager.library_updated.connect(
             self._refresh_game_list, Qt.ConnectionType.UniqueConnection
         )

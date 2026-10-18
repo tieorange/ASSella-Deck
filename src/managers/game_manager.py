@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import time
 import zipfile
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from PyQt6.QtCore import QObject, QTimer, QMetaObject, Q_ARG, pyqtSignal, pyqtSl
 
 from core.steam_helpers import (
     get_steam_libraries,
+    get_unavailable_steam_libraries,
     get_library_index,
     find_steam_install,
 )
@@ -52,6 +54,7 @@ class GameManager(QObject):
     library_updated = pyqtSignal()
     game_selected = pyqtSignal(str)
     scan_complete = pyqtSignal(int)  # Emits number of games found
+    scan_failed = pyqtSignal(str)
     game_update_status_changed = pyqtSignal(str, str)  # (appid, update_status)
     all_updates_checked = pyqtSignal()  # Emitted when a full batch check finishes
     update_check_started = pyqtSignal()  # Emitted when a batch update check starts
@@ -108,6 +111,7 @@ class GameManager(QObject):
         self.scan_runner = None
         self._scan_cancelled = False
         self.is_scanning = False
+        self._unavailable_libraries = []
 
         logger.info("GameManager initialized")
 
@@ -626,44 +630,63 @@ class GameManager(QObject):
         self._games_to_check = []
 
     def scan_steam_libraries_async(self):
-        """
-        Start an async scan of Steam library directories for installed Steam games.
-        The UI will update automatically when the scan completes via signals.
-        """
-        logger.info("Starting async scan of Steam libraries for installed Steam games...")
-
-        # Reset cancel flag and set scanning state
+        """Start one background scan while keeping cached games visible."""
+        if self.scan_runner is not None:
+            logger.info("Library scan already in progress")
+            return False
         self._scan_cancelled = False
         self.is_scanning = True
-
-        # Create a worker function that does the scanning
-        def do_scan():
-            return self._perform_scan()
-
-        # Use TaskRunner to run in background thread
+        self._unavailable_libraries = []
         self.scan_runner = TaskRunner()
-        self.scan_runner.run(do_scan)
+        self.scan_runner.cleanup_complete.connect(self._on_scan_runner_cleanup)
+        try:
+            self.scan_runner.run(
+                self._perform_scan,
+                on_finished=self._on_scan_finished,
+                on_error=self._on_scan_error,
+            )
+        except Exception as error:
+            self.scan_runner = None
+            self._on_scan_error((type(error), error, ""))
+            return False
+        return True
 
     def cancel_scan(self):
-        """Cancel any in-progress library scan."""
+        """Request cancellation; keep the runner until its worker exits."""
+        if not self.is_scanning:
+            return
         self._scan_cancelled = True
-        if self.scan_runner is not None:
-            try:
-                self.scan_runner.stop(wait_ms=0, terminate_on_timeout=False)
-            except Exception as e:
-                logger.debug(f"Error stopping scan runner: {e}")
-            self.scan_runner = None
+        self.is_scanning = False
+        self.scan_failed.emit("Library scan cancelled. Cached games are unchanged.")
+
+    def _on_scan_finished(self, games_found):
+        if self._scan_cancelled:
+            return
+        self.is_scanning = False
+        self.library_updated.emit()
+        self.scan_complete.emit(games_found)
+
+    def _on_scan_error(self, error_info):
+        if self._scan_cancelled:
+            return
+        self.is_scanning = False
+        logger.error("Library scan failed: %s", error_info[1])
+        self.scan_failed.emit(str(error_info[1]))
+
+    def _on_scan_runner_cleanup(self):
+        self.scan_runner = None
 
     def _perform_scan(self):
         """
         Internal method that performs the actual scan.
         Returns the number of games found.
         """
+        scan_started = time.perf_counter()
         steam_libraries = get_steam_libraries()
+        self._unavailable_libraries = get_unavailable_steam_libraries()
 
         if not steam_libraries:
-            logger.warning("No Steam libraries found")
-            return 0
+            raise FileNotFoundError("No Steam libraries found. Check that Steam is installed and retry.")
 
         logger.info(f"Found {len(steam_libraries)} Steam library location(s)")
 
@@ -704,6 +727,7 @@ class GameManager(QObject):
             logger.info(f"Scanning library: {library_path}")
             scanned_libraries += 1
 
+            library_started = time.perf_counter()
             games_found += self._scan_library(
                 library_path,
                 steam_install_path,
@@ -712,6 +736,7 @@ class GameManager(QObject):
                 owned_appids=owned_steam_appids,
                 additional_apps=additional_apps,
             )
+            logger.info("Scanned library %s in %.2fs", library_path, time.perf_counter() - library_started)
 
         accela_games_found = sum(
             1 for game in scanned_games if game.get("is_accela_install")
@@ -723,7 +748,22 @@ class GameManager(QObject):
             games_found,
             accela_games_found,
         )
-        # Sort games after scanning
+        if self._scan_cancelled:
+            return 0
+
+        # Preserve cached entries on a temporarily unmounted library.
+        self._unavailable_libraries = sorted(set(
+            self._unavailable_libraries + get_unavailable_steam_libraries()
+        ))
+        unavailable = {os.path.realpath(path) for path in self._unavailable_libraries}
+        scanned_paths = {game.get("install_path") for game in scanned_games}
+        for game in self.games:
+            if (os.path.realpath(game.get("library_path") or "") in unavailable
+                    and game.get("install_path") not in scanned_paths):
+                retained = dict(game)
+                retained["library_unavailable"] = True
+                scanned_games.append(retained)
+        # A successful scan removes games no longer present on available libraries.
         self.games = self._get_sorted_games(scanned_games)
         self.filtered_games.clear()
         self._apply_filters()
@@ -750,19 +790,7 @@ class GameManager(QObject):
         # Calculate any pending sizes asynchronously in background
         self._calculate_pending_sizes_async()
 
-        # Emit signals on the main thread via QMetaObject.invokeMethod.
-        # QTimer.singleShot called from a background thread does NOT schedule
-        # on the main event loop — it silently fires on the worker thread's
-        # (non-existent) loop. invokeMethod with QueuedConnection is the correct
-        # cross-thread signal dispatch mechanism.
-        from PyQt6.QtCore import Qt as _Qt
-        QMetaObject.invokeMethod(
-            self,
-            "_emit_scan_signals",
-            _Qt.ConnectionType.QueuedConnection,
-            Q_ARG(int, games_found),
-        )
-
+        logger.info("Library scan finished in %.2fs", time.perf_counter() - scan_started)
         return games_found
 
     def _calculate_pending_sizes_async(self):

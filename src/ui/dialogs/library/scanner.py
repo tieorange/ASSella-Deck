@@ -36,19 +36,32 @@ class LibraryScannerMixin:
         self.scan_button.setEnabled(False)
         self.scan_button.setText("Scanning...")
         self.info_label.setText("Scanning Steam libraries...")
-        self._refreshing = True
-        self.games_list.clear()
-
-        self.game_manager.scan_steam_libraries_async()
+        if not self.game_manager.scan_steam_libraries_async():
+            self._scanning = False
+            self.scan_button.setEnabled(True)
+            self.scan_button.setText("Scan Libraries")
 
     def _on_scan_complete(self, count: int) -> None:
         self.scan_button.setEnabled(True)
         self.scan_button.setText("Scan Libraries")
         self._scanning = False
-        self.info_label.setText(f"Found {count} installed Steam game(s).")
+        missing = getattr(self.game_manager, "_unavailable_libraries", [])
+        if missing:
+            self.info_label.setText(
+                f"Found {count} installed game(s). Unavailable libraries: {', '.join(missing)}. "
+                "Cached games remain visible; reconnect the drive and scan again."
+            )
+        else:
+            self.info_label.setText(f"Found {count} installed Steam game(s).")
         if hasattr(self, "_trigger_steam_scan"):
             self._trigger_steam_scan()
-        self._refresh_game_list()
+
+    def _on_scan_failed(self, message: str) -> None:
+        self.scan_button.setEnabled(True)
+        self.scan_button.setText("Scan Libraries")
+        self._scanning = False
+        self._refreshing = False
+        self.info_label.setText(f"{message} Press Scan Libraries to retry.")
 
     def _on_all_updates_checked(self) -> None:
         """Called when the full batch update check finishes."""
