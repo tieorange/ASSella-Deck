@@ -28,6 +28,7 @@ python scripts/test_deck_library.py
 python scripts/test_side_by_side_install.py
 python scripts/test_fork_runtime_identity.py
 QT_QPA_PLATFORM=offscreen python scripts/test_deck_home_ui.py
+QT_QPA_PLATFORM=offscreen python scripts/test_deck_navigation.py
 python scripts/check_silent_exceptions.py
 python -m compileall -q src
 bash -n install.sh

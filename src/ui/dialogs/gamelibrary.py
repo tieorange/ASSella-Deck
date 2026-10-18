@@ -130,6 +130,15 @@ class GameLibraryDialog(
         self._setup_window()
         self._setup_ui()
         self._connect_signals()
+        from ui.deck_ui.navigation import DeckNavigation, FocusReturn
+        self._focus_return = FocusReturn()
+        self._deck_navigation = DeckNavigation(
+            self,
+            back=self.reject,
+            search=self.search_input,
+            actions=lambda: self.select_mode_button.click(),
+            sections=(self.tab_bar.btn_accela, self.tab_bar.btn_atom, self.tab_bar.btn_steam),
+        )
 
         if self.parent():
             from ui.dialogs.dialog_raiser import DialogRaiser
@@ -147,7 +156,7 @@ class GameLibraryDialog(
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setMinimumWidth(600)
         self.setMinimumHeight(400)
-        self.resize(750, 500)
+        self.resize(1050, 660)
 
         self.setStyleSheet(
             f"""
@@ -184,6 +193,7 @@ class GameLibraryDialog(
                 font-weight: bold;
             }}
             QPushButton:hover {{ background-color: #FFFFFF; }}
+            QPushButton:focus {{ border: 3px solid #43d6c1; }}
             QPushButton:disabled {{ background-color: #555555; color: #888888; }}
             
             QLineEdit {{ 
@@ -193,6 +203,7 @@ class GameLibraryDialog(
                 padding: 5px; 
                 border-radius: 4px; 
             }}
+            QLineEdit:focus {{ border: 2px solid #43d6c1; }}
             
             QComboBox {{ 
                 background-color: #1e1e1e; 
@@ -220,6 +231,8 @@ class GameLibraryDialog(
     def showEvent(self, event) -> None:
         super().showEvent(event)
         QTimer.singleShot(0, self._start_pending_image_fetches)
+        if not self.games_list.currentItem():
+            QTimer.singleShot(0, self.search_input.setFocus)
 
     def _setup_ui(self) -> None:
         """Create and arrange UI elements."""
@@ -233,8 +246,12 @@ class GameLibraryDialog(
 
         content_widget = QWidget()
         layout = QVBoxLayout(content_widget)
-        layout.setContentsMargins(16, 12, 16, 16)
+        layout.setContentsMargins(24, 16, 24, 18)
+        layout.setSpacing(12)
         window_layout.addWidget(content_widget, 1)
+
+        from ui.deck_ui.widgets import DeckNotice, DeckSectionTitle
+        layout.addWidget(DeckSectionTitle("Game Library", "Browse installed games across internal storage and microSD."))
 
         applist_2_0_enabled = self.applist_2_0_enabled
 
@@ -243,6 +260,8 @@ class GameLibraryDialog(
         top_layout.setContentsMargins(0, 0, 0, 0)
 
         self.scan_button = QPushButton("Scan Libraries")
+        self.scan_button.setMinimumHeight(40)
+        self.scan_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.scan_button.clicked.connect(self._scan_for_games)
 
         self.search_input = QLineEdit()
@@ -382,7 +401,9 @@ class GameLibraryDialog(
             self.scan_imports_button.clicked.connect(self._on_scan_imports_clicked)
             top_layout.addWidget(self.scan_imports_button)
 
-            top_layout.addWidget(QLabel("Sort by:"))
+            sort_label = QLabel("Sort by:")
+            sort_label.setStyleSheet("color:#a7bac9; font-size:10pt;")
+            top_layout.addWidget(sort_label)
             top_layout.addWidget(self.sort_combo)
             top_layout.addWidget(self.select_mode_button)
         else:
@@ -391,11 +412,20 @@ class GameLibraryDialog(
             top_layout.addStretch()
             top_layout.addWidget(QLabel("Search:"))
             top_layout.addWidget(self.search_input)
-            top_layout.addWidget(QLabel("Sort by:"))
+            sort_label = QLabel("Sort by:")
+            sort_label.setStyleSheet("color:#a7bac9; font-size:10pt;")
+            top_layout.addWidget(sort_label)
             top_layout.addWidget(self.sort_combo)
             top_layout.addWidget(self.select_mode_button)
 
+        header_actions = QHBoxLayout()
+        header_actions.addWidget(self.scan_button)
+        header_actions.addStretch()
+        layout.addLayout(header_actions)
         layout.addLayout(top_layout)
+
+        self.library_notice = DeckNotice("Cached games remain available while the library refreshes.")
+        layout.addWidget(self.library_notice)
 
         # --- Tab Navigation Bar ---
         self.tab_bar = LibraryTabBar(accent_color=self.accent_color, parent=self)
@@ -404,6 +434,7 @@ class GameLibraryDialog(
 
         # --- Games List ---
         self.games_list = QListWidget()
+        self.games_list.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.games_list.setSpacing(2)
         self.games_list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.games_list.verticalScrollBar().valueChanged.connect(self._start_pending_image_fetches)
@@ -508,7 +539,16 @@ class GameLibraryDialog(
 
         # --- Status Footer ---
         self.info_label = QLabel("Found 0 installed Steam games")
+        self.info_label.setStyleSheet("color:#a7bac9; font-size:10pt;")
         layout.addWidget(self.info_label)
+        action_row = QHBoxLayout()
+        self.open_selected_button = QPushButton("Open Game Details")
+        self.open_selected_button.setMinimumHeight(44)
+        self.open_selected_button.setEnabled(False)
+        self.open_selected_button.clicked.connect(self._open_selected_game)
+        action_row.addStretch()
+        action_row.addWidget(self.open_selected_button)
+        layout.addLayout(action_row)
 
     def _connect_signals(self) -> None:
         """Connect GameManager and local signals."""
@@ -530,7 +570,8 @@ class GameLibraryDialog(
         )
 
         self.games_list.itemClicked.connect(self._on_item_selected)
-        self.games_list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self.games_list.currentItemChanged.connect(lambda current, _previous: self.open_selected_button.setEnabled(current is not None))
+        self.games_list.itemActivated.connect(self._on_item_double_clicked)
         self.games_list.customContextMenuRequested.connect(self._show_games_list_context_menu)
         self.goldberg_check_complete.connect(self._on_goldberg_check_complete)
         self.manifest_download_complete.connect(self._on_manifest_download_complete)
@@ -538,6 +579,15 @@ class GameLibraryDialog(
         self.zip_parse_complete.connect(self._on_zip_parse_complete)
         self.hubcap_status_check_complete.connect(self._on_hubcap_status_check_complete)
         self.steam_scan_complete.connect(self._on_steam_scan_complete)
+
+    def _open_selected_game(self) -> None:
+        item = self.games_list.currentItem()
+        if item is not None:
+            self._on_item_double_clicked(item)
+
+    def done(self, result):
+        self._focus_return.restore()
+        super().done(result)
 
     @pyqtSlot(object)
     def _run_on_main_thread(self, fn) -> None:

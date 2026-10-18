@@ -115,6 +115,11 @@ class CanaryWelcomeDialog(QDialog):
         self._config_check_signal.connect(self._on_config_check_result)
 
         self._init_ui()
+        from ui.deck_ui.navigation import DeckNavigation
+        self._deck_navigation = DeckNavigation(self, back=self._deck_back)
+        self.outer_frame.setStyleSheet(self.outer_frame.styleSheet() + " QPushButton:focus { border: 3px solid #43d6c1; }")
+        self.btn_skip_intro.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.btn_skip_intro.setFocus()
 
         # Center on screen or parent window
         try:
@@ -296,33 +301,15 @@ class CanaryWelcomeDialog(QDialog):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _create_header_bar(self, current_step: int) -> QWidget:
+        from ui.deck_ui.widgets import DeckStepHeader
+
         header = QWidget()
         layout = QHBoxLayout(header)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 8, 10, 0)
         layout.setSpacing(8)
-
-        steps = ["Awakening", "Hubcap API", "SLSsteam", "at0-m", "Preferences"]
-        stepper_layout = QHBoxLayout()
-        stepper_layout.setSpacing(8)
-
-        for idx, title in enumerate(steps):
-            lbl = QLabel(f"{idx + 1}. {title}")
-            lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            if idx == current_step:
-                lbl.setStyleSheet(f"color: {self.accent_color}; font-weight: bold; font-size: 8.5pt;")
-            elif idx < current_step:
-                lbl.setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 8pt;")
-            else:
-                lbl.setStyleSheet("color: rgba(255, 255, 255, 0.3); font-size: 8pt;")
-            stepper_layout.addWidget(lbl)
-
-            if idx < len(steps) - 1:
-                sep = QLabel("•")
-                sep.setStyleSheet("color: rgba(255, 255, 255, 0.2); font-size: 8pt;")
-                stepper_layout.addWidget(sep)
-
-        layout.addLayout(stepper_layout)
-        layout.addStretch()
+        steps = DeckStepHeader(("Welcome", "Hubcap", "Steam", "at0-m", "Done"))
+        steps.set_step(current_step)
+        layout.addWidget(steps, 1)
 
         btn_close = QPushButton("✕")
         btn_close.setFixedSize(24, 24)
@@ -342,6 +329,13 @@ class CanaryWelcomeDialog(QDialog):
         layout.addWidget(btn_close)
 
         return header
+
+    def _deck_back(self):
+        index = self.stack.currentIndex()
+        if index > 0:
+            self.stack.setCurrentIndex(index - 1)
+        else:
+            self.close()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Slide 1: Awakening (Full 640x360 GIF + Bottom Overlay)
@@ -416,7 +410,7 @@ class CanaryWelcomeDialog(QDialog):
         titles_layout.setSpacing(3)
         titles_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        self.awake_title_lbl = QLabel("Hi, Your adventure begins")
+        self.awake_title_lbl = QLabel("Welcome to ASSella Deck")
         self.awake_title_lbl.setStyleSheet(f"""
             font-size: 15pt;
             font-weight: bold;
@@ -425,7 +419,7 @@ class CanaryWelcomeDialog(QDialog):
         """)
         titles_layout.addWidget(self.awake_title_lbl)
 
-        self.awake_sub_lbl = QLabel("Welcome to ASSella Canary. Let's configure your setup.")
+        self.awake_sub_lbl = QLabel("Set up downloads and Steam integration for this device.")
         self.awake_sub_lbl.setStyleSheet("""
             color: rgba(255, 255, 255, 0.75);
             font-size: 9pt;

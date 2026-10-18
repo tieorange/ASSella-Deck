@@ -149,7 +149,10 @@ class ThemedMessageBox(QDialog):
             or (settings.value("background_color", "#111318") if settings else "#111318")
         )
 
+        from ui.deck_ui.navigation import DeckNavigation, FocusReturn
+        self._focus_return = FocusReturn()
         self._build_ui(title, text, buttons, default_button, severity, informative)
+        self._deck_navigation = DeckNavigation(self, back=self.reject)
 
     def _build_ui(
         self,
@@ -270,6 +273,7 @@ class ThemedMessageBox(QDialog):
             QPushButton:hover {{
                 background-color: rgba({c.red()}, {c.green()}, {c.blue()}, 0.85);
             }}
+            QPushButton:focus {{ border: 3px solid #FFFFFF; }}
             QPushButton:pressed {{
                 background-color: rgba({c.red()}, {c.green()}, {c.blue()}, 0.70);
             }}
@@ -290,6 +294,7 @@ class ThemedMessageBox(QDialog):
                 background-color: rgba(255, 255, 255, 0.14);
                 border-color: rgba(255, 255, 255, 0.22);
             }
+            QPushButton:focus { border: 3px solid #43d6c1; }
             QPushButton:pressed {
                 background-color: rgba(255, 255, 255, 0.05);
             }
@@ -325,11 +330,17 @@ class ThemedMessageBox(QDialog):
         """One themed button in the row; clicking it closes the dialog with ``value``."""
         btn = QPushButton(label)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setMinimumHeight(44)
+        btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         btn.setStyleSheet(self._primary_style if primary else self._secondary_style)
         btn.setAutoDefault(False)
         btn.clicked.connect(lambda _checked=False, chosen=value: self._finish(chosen))
         self._button_row.addWidget(btn)
         return btn
+
+    def done(self, result):
+        self._focus_return.restore()
+        super().done(result)
 
     def _finish(self, value) -> None:
         """Record what was clicked and close; an affirmation accepts, anything else rejects."""

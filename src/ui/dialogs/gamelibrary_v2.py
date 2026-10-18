@@ -170,8 +170,8 @@ class GameDetailsDialogV2(QDialog):
 
         self.setWindowTitle(f"{game_data.get('game_name', 'Game')} — Details")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setMinimumSize(560, 440)
-        self.resize(620, 500)
+        self.setMinimumSize(640, 440)
+        self.resize(1000, 640)
         self.setModal(True)
 
         # Workshop tab is shown only if game has workshop AND has downloaded content
@@ -179,6 +179,11 @@ class GameDetailsDialogV2(QDialog):
 
         self._apply_stylesheet()
         self._setup_ui()
+        from ui.deck_ui.navigation import DeckNavigation, FocusReturn
+        self._focus_return = FocusReturn()
+        self._deck_navigation = DeckNavigation(self, back=self.reject, sections=self._tab_buttons)
+        if self._tab_buttons:
+            QTimer.singleShot(0, self._tab_buttons[0].setFocus)
 
         # Check workshop availability and downloaded content in background thread
         from utils.workshop_helpers import check_game_workshop_available_async
@@ -254,12 +259,12 @@ class GameDetailsDialogV2(QDialog):
         tab_bar_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: rgba(0, 0, 0, 0.078);
-                border-bottom: 1px solid {ink_on(self.background_color, 0.039)};
+                border-right: 1px solid {ink_on(self.background_color, 0.12)};
             }}
         """)
-        tab_bar_layout = QHBoxLayout(tab_bar_frame)
-        tab_bar_layout.setContentsMargins(8, 0, 8, 0)
-        tab_bar_layout.setSpacing(2)
+        tab_bar_layout = QVBoxLayout(tab_bar_frame)
+        tab_bar_layout.setContentsMargins(8, 8, 8, 8)
+        tab_bar_layout.setSpacing(5)
 
         is_atom = bool(
             self.game_data.get("is_atom")
@@ -317,9 +322,10 @@ class GameDetailsDialogV2(QDialog):
             btn = QPushButton(label)
             btn.setFlat(True)
             btn.setCheckable(True)
-            btn.setFixedHeight(30)
-            btn.setStyleSheet("border: none; border-radius: 0px; padding: 0px 10px; font-size: 9pt;")
+            btn.setMinimumHeight(44)
+            btn.setStyleSheet("border: none; border-radius: 8px; padding: 0px 13px; font-size: 10pt; text-align:left;")
             btn.clicked.connect(lambda _c, i=idx: self._switch_tab(i))
+            btn.toggled.connect(lambda checked, i=idx: self._switch_tab(i) if checked and self.stacked.currentIndex() != i else None)
             tab_bar_layout.addWidget(btn)
             self._tab_buttons.append(btn)
             if label == "Workshop":
@@ -335,7 +341,7 @@ class GameDetailsDialogV2(QDialog):
 
         close_btn = QPushButton("✕ Close")
         close_btn.setFlat(True)
-        close_btn.setFixedHeight(30)
+        close_btn.setMinimumHeight(42)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 border: none; border-radius: 0;
@@ -347,7 +353,13 @@ class GameDetailsDialogV2(QDialog):
         close_btn.clicked.connect(self.accept)
         tab_bar_layout.addWidget(close_btn)
 
-        root.addWidget(tab_bar_frame)
+        tab_scroll = QScrollArea()
+        tab_scroll.setWidgetResizable(True)
+        tab_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        tab_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        tab_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        tab_scroll.setFixedWidth(180)
+        tab_scroll.setWidget(tab_bar_frame)
 
         # Stacked content
         self.stacked = QStackedWidget()
@@ -362,7 +374,12 @@ class GameDetailsDialogV2(QDialog):
         self._init_tickets_tab()
         if self._is_luatools_available():
             self._init_luafix_tab()
-        root.addWidget(self.stacked, 1)
+        content_row = QHBoxLayout()
+        content_row.setContentsMargins(0, 0, 0, 0)
+        content_row.setSpacing(0)
+        content_row.addWidget(tab_scroll)
+        content_row.addWidget(self.stacked, 1)
+        root.addLayout(content_row, 1)
 
         self._switch_tab(0)
         self._init_slsonline_logic()
@@ -377,21 +394,23 @@ class GameDetailsDialogV2(QDialog):
                 btn.setStyleSheet(f"""
                     QPushButton {{
                         border: none; border-radius: 0;
-                        border-bottom: 2px solid {self.accent_color};
-                        padding: 0px 10px; font-size: 9pt;
+                        border-left: 3px solid {self.accent_color};
+                        padding: 0px 12px; font-size: 10pt; text-align:left;
                         color: {self.accent_color};
                         font-weight: bold;
                     }}
+                    QPushButton:focus {{ background:#26545a; border:2px solid #43d6c1; }}
                 """)
             else:
                 btn.setChecked(False)
                 btn.setStyleSheet(f"""
                     QPushButton {{
                         border: none; border-radius: 0;
-                        padding: 0px 10px; font-size: 9pt;
+                        padding: 0px 12px; font-size: 10pt; text-align:left;
                         color: {ink_on(self.background_color, 0.65)};
                     }}
                     QPushButton:hover {{ color: {self.accent_color}; }}
+                    QPushButton:focus {{ background:#26545a; border:2px solid #43d6c1; }}
                 """)
         adapt_child_stylesheets(self)
 
@@ -401,6 +420,10 @@ class GameDetailsDialogV2(QDialog):
             self._ensure_achievements_loaded()
         elif hasattr(self, "ws_page_index") and index == self.ws_page_index:
             self._ensure_workshop_loaded()
+
+    def done(self, result):
+        self._focus_return.restore()
+        super().done(result)
 
     def _ensure_builds_loaded(self):
         if getattr(self, "_builds_fetch_requested", False):

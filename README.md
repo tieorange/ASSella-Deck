@@ -22,9 +22,19 @@ improvements below are on this fork's `deck/beta` branch, which tracks upstream
   entry, icon, settings, and data paths. Its installer, updater, and uninstaller
   leave ACCELA and upstream ASSella files alone. See the
   [Deck install guide](docs/install.md).
+- **Deck navigation:** Home leads directly to Library, Find a Game, and Activity.
+  Game Library has a visible scan action, storage recovery notice, and an Open
+  Game Details action. Game Details uses a large vertical section rail.
+- **Guided installs:** Search, build and depot selection, storage and backend,
+  and review share one window. A package enters the queue only after the final
+  Add to Queue action. Native controller mappings, keyboard focus, and Back
+  behavior are wired across these screens; controller hardware verification is pending.
+- **Activity and recovery:** The Activity screen shows current progress and
+  queued games, with pause, cancel, remove, and retry actions backed by the
+  existing task manager. The macOS UI mock can review Deck layouts safely.
 - **Upstream merge path:** The repository retains ASSella's Git history and has
-  an [upstream merge guide](docs/deck-fork.md). Nine focused local tests cover
-  scan recovery and large-library rendering.
+  an [upstream merge guide](docs/deck-fork.md). Focused local tests cover scan
+  recovery, large-library rendering, guided navigation, and queue recovery.
 
 Steam Deck hardware timing, AppImage install and rollback, and binary
 redistribution checks are still pending. No modified AppImage has been released.

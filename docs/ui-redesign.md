@@ -13,10 +13,11 @@ Home is the operational overview. Its primary actions are **Library** and
 user to open a log view. Game Library remains a separate window and opens Game
 Details for a selected game.
 
-Discovery uses one guided flow. Search and imported packages start at the first
-relevant step; direct Library or Game Details actions enter at the matching
-build, content, storage, or review step. The flow owns its Back action and
-returns focus to its entry point on close.
+Home and top-bar discovery use one guided flow: Find, Build & depots, Storage &
+backend, Review. Queueing occurs only on Review. Existing Library and Game
+Details actions still open their specialized operation dialogs; those actions
+retain their current semantics. Back returns to the preceding step and dialog
+closure restores focus to the entry point.
 
 ## Input and layout
 
@@ -43,7 +44,10 @@ downloads, queues, and game operations.
 ## Mock and verification
 
 `scripts/run_ui_mock.py` launches production UI widgets with deterministic
-in-memory state. It never touches Steam or external services. Test it on macOS
-with computer-use automation at Deck and desktop sizes before treating a screen
-as reviewed. Physical controller and real Deck Desktop/Gaming Mode verification
+in-memory state. It never touches Steam or external services. Run with
+`--deck` or `--deck-720` and optionally `--state loading|empty|error|missing-sd|large`.
+Home, Activity, the guided install shell, Library shell, and Game Details
+section rail are production widgets. Library rows and Game Details content are
+fixtures because the production screens scan storage and load external data.
+Physical controller, actual install, and real Deck Desktop/Gaming Mode checks
 remain release gates.

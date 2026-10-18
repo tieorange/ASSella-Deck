@@ -42,6 +42,12 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 - The Mac mock must use the production widgets with injected in-memory data. It
   must not open Steam, contact services, modify user settings, install anything,
   or start a local server.
+- The Deck install entry from Home and search opens `DeckInstallFlow`; it emits
+  queue metadata only at the final Review action. Keep `FetchManifestDialog`
+  and depot selection directly callable for existing library and manager paths.
+- Native gamepad input uses `pygame-ce` controller mappings. Retain keyboard
+  navigation when no controller is attached. Keep SDL polling on the Qt main
+  thread and do not consume directional input from text fields or lists.
 
 ## Fork boundaries
 
@@ -63,7 +69,8 @@ This is `tieorange/ASSella-Deck`, a Steam Deck fork of `niwia/ASSella`. Work on
 ## Checks
 
 - For library changes, run `python scripts/test_deck_library.py` with PyQt6 and
-  psutil available, plus relevant existing tests.
+  psutil available, plus `python scripts/test_deck_navigation.py` and relevant
+  existing tests for UI changes.
 - Run `python -m compileall -q src`, `python scripts/check_silent_exceptions.py`,
   and `bash -n install.sh` when those files are touched. Use
   `git -c core.whitespace=cr-at-eol diff --check` for CRLF source files.

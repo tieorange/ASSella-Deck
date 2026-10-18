@@ -100,6 +100,7 @@ class LibraryTabBar(QWidget):
                 border: 1px solid {self.accent_color};
                 font-weight: bold;
             }}
+            QPushButton:focus {{ border: 3px solid #43d6c1; }}
         """
         for btn in self._buttons.values():
             btn.setStyleSheet(style)

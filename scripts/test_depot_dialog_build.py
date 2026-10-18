@@ -252,7 +252,7 @@ def main() -> int:
     )
     check(isinstance(dlg4._storage_buttons, dict), "storage button map built")
     check(len(dlg4._storage_buttons) >= 1, "at least one storage button offered")
-    check(str(Path(_TMP) / "SteamLibrary") in dlg4._storage_paths,
+    check(os.path.realpath(Path(_TMP) / "SteamLibrary") in dlg4._storage_paths,
           f"the stubbed library is listed ({dlg4._storage_paths})")
     check(dlg4._more_storage_combo is None or dlg4._more_storage_combo.count() >= 1,
           "More Drives combo either absent or populated")
