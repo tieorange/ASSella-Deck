@@ -248,25 +248,22 @@ class LibraryFilterSortMixin:
         # libraries do not freeze the Steam Deck UI.
         self._list_generation = getattr(self, "_list_generation", 0) + 1
         generation = self._list_generation
-        game_iterator = iter(showing_games)
+        next_index = 0
         total_size = sum(int(game.get("size_on_disk") or 0) for game in showing_games)
 
         def render_batch():
+            nonlocal next_index
             if self._closing or generation != self._list_generation:
                 return
+            batch = showing_games[next_index:next_index + 30]
+            next_index += len(batch)
             self.games_list.setUpdatesEnabled(False)
-            rendered = 0
             try:
-                for _ in range(30):
-                    try:
-                        game = next(game_iterator)
-                    except StopIteration:
-                        break
+                for game in batch:
                     self._add_game_to_list(game)
-                    rendered += 1
             finally:
                 self.games_list.setUpdatesEnabled(True)
-            if rendered:
+            if next_index < len(showing_games):
                 QTimer.singleShot(0, render_batch)
             else:
                 self._refreshing = False
