@@ -30,6 +30,7 @@ pycryptodome==3.23.0
 pyyaml==6.0.3
 pysocks==1.7.1
 pyqt6==6.9.1
+pygame-ce==2.5.8
 zstandard==0.25.0
 
 # urwid powers the CLI depot/DLC selection menus. `managers/cli_manager.py`

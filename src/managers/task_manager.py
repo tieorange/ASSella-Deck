@@ -87,6 +87,7 @@ class TaskManager(
 
         # Processing state
         self.is_processing = False
+        self._task_failed = False
         self.is_download_paused = False
         self.is_cancelling = False
         self.current_job: Optional[str] = None
@@ -203,6 +204,8 @@ class TaskManager(
 
     def start_zip_processing(self, zip_path, metadata=None):
         self.is_processing = True
+        self.last_failed_job = None
+        self._task_failed = False
         self.current_job = zip_path
         self.current_job_metadata = metadata or {}
 
@@ -1068,6 +1071,8 @@ class TaskManager(
 
     def start_workshop_download(self, workshop_data):
         self.is_processing = True
+        self._task_failed = False
+        self.last_failed_job = None
         display_name = workshop_data.get("display_name", "Workshop Items")
         self.current_job = display_name
         self.current_job_metadata = {"game_name": display_name}
@@ -1276,6 +1281,7 @@ class TaskManager(
 
         self.is_processing = True
         self._is_handoff_job = True
+        self._task_failed = False
         self.game_data = {
             "appid": app_id_str,
             "game_name": name,
@@ -1340,11 +1346,28 @@ class TaskManager(
             return
 
         _, error_value, _ = error_info
+        self.last_failed_job = {
+            "path": self.current_job,
+            "metadata": dict(self.current_job_metadata or {}),
+            "error": str(error_value),
+        }
+        self._task_failed = True
         ThemedMessageBox.critical(
             self.main_window, "Error", f"An error occurred: {error_value}"
         )
         if not self.is_cancelling:
             self.job_finished()
+
+    def retry_failed_job(self):
+        """Requeue the last failed package when its source still exists."""
+        from pathlib import Path
+
+        failed = getattr(self, "last_failed_job", None)
+        if not failed or not Path(str(failed.get("path", ""))).is_file():
+            return False
+        self.last_failed_job = None
+        self.main_window.job_queue.add_job(failed["path"], failed["metadata"])
+        return True
 
     def job_finished(self):
         """Clean up after job completion"""
@@ -1364,7 +1387,7 @@ class TaskManager(
             self._last_handoff_success = None
             self._is_handoff_job = False
         else:
-            ddm_ok = not self.is_cancelling
+            ddm_ok = not self.is_cancelling and not getattr(self, "_task_failed", False)
 
         if not self._slscheevo_ran:
             slscheevo_ok = None

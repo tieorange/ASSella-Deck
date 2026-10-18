@@ -46,6 +46,8 @@ pycryptodome==3.23.0
     # via -r requirements.in
 pycryptodomex==3.24.0
     # via steam
+pygame-ce==2.5.8
+    # via -r requirements.in
 pyqt6==6.9.1
     # via -r requirements.in
 pyqt6-qt6==6.9.2
@@ -68,7 +70,7 @@ urllib3==2.8.0
     # via requests
 urwid==2.6.16
     # via -r requirements.in
-vdf @ git+https://github.com/solsticegamestudios/vdf.git@v4.0
+vdf @ git+https://github.com/solsticegamestudios/vdf.git@fb88ea7e38a85476743f5601b0c80d5715034623
     # via
     #   -r requirements.in
     #   steam

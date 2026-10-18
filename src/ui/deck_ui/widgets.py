@@ -72,6 +72,51 @@ class DeckSectionTitle(QWidget):
             layout.addWidget(subtitle)
 
 
+class DeckNotice(QFrame):
+    """Persistent status or recovery text that remains readable during loading."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("deckNotice")
+        self.setStyleSheet("QFrame#deckNotice { background:#1d3040; border:1px solid #315469; border-radius:10px; }")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 10, 14, 10)
+        self.label = QLabel(text)
+        self.label.setWordWrap(True)
+        self.label.setStyleSheet("color:#d3e6f1; font-size:10pt;")
+        layout.addWidget(self.label)
+
+    def setText(self, text: str):
+        self.label.setText(text)
+
+
+class DeckStepHeader(QWidget):
+    """Compact progress rail for onboarding and guided installation."""
+
+    def __init__(self, steps: tuple[str, ...], parent: QWidget | None = None):
+        super().__init__(parent)
+        self.steps = steps
+        self.labels = []
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        for i, title in enumerate(steps):
+            label = QLabel(f"{i + 1}  {title}")
+            label.setStyleSheet("color:#95aabd; background:#243343; border-radius:9px; padding:8px 11px; font-weight:700;")
+            layout.addWidget(label, 1)
+            self.labels.append(label)
+        self.set_step(0)
+
+    def set_step(self, index: int):
+        for i, label in enumerate(self.labels):
+            if i == index:
+                label.setStyleSheet("color:#062022; background:#43d6c1; border-radius:9px; padding:8px 11px; font-weight:800;")
+            elif i < index:
+                label.setStyleSheet("color:#d6f4e9; background:#24565a; border-radius:9px; padding:8px 11px; font-weight:700;")
+            else:
+                label.setStyleSheet("color:#95aabd; background:#243343; border-radius:9px; padding:8px 11px; font-weight:700;")
+
+
 def labeled_status(label: str, value: QLabel, parent: QWidget | None = None) -> QWidget:
     """Compose a compact semantic status row while preserving its value label."""
     row = QWidget(parent)

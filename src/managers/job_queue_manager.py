@@ -173,6 +173,15 @@ class JobQueueManager(QObject):
         except Exception as e:
             logger.error(f"Error removing queue item: {e}", exc_info=True)
 
+    def remove_job_at(self, index: int) -> bool:
+        """Remove a queued job selected in a secondary queue view."""
+        if not 0 <= index < len(self.job_queue):
+            return False
+        removed = self.job_queue.pop(index)
+        logger.info("Removed queued job: %s", removed.get("metadata", {}).get("game_name", removed.get("path", "workshop")))
+        self._update_ui_state()
+        return True
+
     def _start_next_job(self):
         """Start the next job in queue"""
         self._update_ui_state()

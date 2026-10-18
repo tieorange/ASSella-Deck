@@ -26,3 +26,30 @@ def activate_focused() -> bool:
         click()
         return True
     return False
+
+
+def move_focus(root: QWidget, direction: Qt.Key) -> bool:
+    """Move to the nearest visible control in a spatial direction."""
+    current = QApplication.focusWidget()
+    if current is None or not (current is root or root.isAncestorOf(current)):
+        return False
+    center = current.mapToGlobal(current.rect().center())
+    candidates = []
+    for widget in root.findChildren(QWidget):
+        if widget is current or not widget.isVisible() or not widget.isEnabled():
+            continue
+        if widget.focusPolicy() not in (Qt.FocusPolicy.StrongFocus, Qt.FocusPolicy.TabFocus, Qt.FocusPolicy.WheelFocus):
+            continue
+        point = widget.mapToGlobal(widget.rect().center())
+        dx, dy = point.x() - center.x(), point.y() - center.y()
+        if direction == Qt.Key.Key_Left and dx >= -4 or direction == Qt.Key.Key_Right and dx <= 4:
+            continue
+        if direction == Qt.Key.Key_Up and dy >= -4 or direction == Qt.Key.Key_Down and dy <= 4:
+            continue
+        primary = abs(dx) if direction in (Qt.Key.Key_Left, Qt.Key.Key_Right) else abs(dy)
+        secondary = abs(dy) if direction in (Qt.Key.Key_Left, Qt.Key.Key_Right) else abs(dx)
+        candidates.append((primary + secondary * 2, widget))
+    if not candidates:
+        return False
+    min(candidates, key=lambda item: item[0])[1].setFocus()
+    return True

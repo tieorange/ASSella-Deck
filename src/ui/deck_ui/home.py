@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from .focus import configure_focus_order
+from .navigation import DeckNavigation
 from .widgets import DeckActionButton, DeckCard, DeckSectionTitle
 
 
@@ -63,6 +64,8 @@ class DeckHomeOverview(QWidget):
         self.refresh_button.clicked.connect(refresh_updates)
         root.addWidget(self.refresh_button, alignment=Qt.AlignmentFlag.AlignRight)
         configure_focus_order((self.library_button, self.find_button, self.activity_button, self.refresh_button))
+        self._navigation = DeckNavigation(self)
+        QTimer.singleShot(0, self.library_button.setFocus)
 
     def _add_summary_card(self, grid: QGridLayout, row: int, column: int, title: str, value: str) -> QLabel:
         card = DeckCard()
