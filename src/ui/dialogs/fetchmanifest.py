@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from PyQt6.QtCore import QSize, Qt, QTimer, QRectF
+from PyQt6.QtCore import QSize, Qt, QTimer, QRectF, pyqtSignal
 from PyQt6.QtGui import QColor, QIcon, QPixmap, QPainter, QBrush, QLinearGradient, QPen, QMovie
 from PyQt6.QtWidgets import (
     QDialog,
@@ -119,9 +119,12 @@ class FetchManifestDialog(QDialog):
     A dialog for searching and downloading manifests from the Morrenus API.
     """
 
-    def __init__(self, parent=None, select_tab: int = 0, initial_query: str = ""):
+    manifest_ready = pyqtSignal(object)
+
+    def __init__(self, parent=None, select_tab: int = 0, initial_query: str = "", guided: bool = False):
         super().__init__(parent)
         self.parent_window = parent
+        self.guided = guided
         self.setWindowTitle("Fetch Manifest from Hubcap API")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setMinimumWidth(600)
@@ -167,7 +170,7 @@ class FetchManifestDialog(QDialog):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(200, self.on_search)
 
-        if self.parent():
+        if self.parent() and not self.guided:
             from ui.dialogs.dialog_raiser import DialogRaiser
             DialogRaiser(self.parent(), self)
 
@@ -966,7 +969,11 @@ class FetchManifestDialog(QDialog):
         self._set_loading_active(False)
 
         selected_branch = "public"
-        if branches and len(branches) > 1:
+        if self.guided and branches:
+            saved_branch = self.settings.value(f"selected_branch/{app_id}", "public", type=str)
+            if saved_branch in branches:
+                selected_branch = saved_branch
+        if branches and len(branches) > 1 and not self.guided:
             from ui.dialogs.branch_selection_dialog import BranchSelectionDialog
             branch_choice, ok = BranchSelectionDialog.select_branch(self, app_id=app_id, branches=branches)
             if ok and branch_choice:
@@ -977,7 +984,8 @@ class FetchManifestDialog(QDialog):
 
         self._discovered_branches = branches or {"public": {}}
         self._current_selected_branch = selected_branch
-        self.settings.setValue(f"selected_branch/{app_id}", selected_branch)
+        if not self.guided:
+            self.settings.setValue(f"selected_branch/{app_id}", selected_branch)
         self._toggle_inputs(False)
         self._set_loading_active(True)
         self.status_label.setText(f"Checking updates & fetching manifest for App ID {app_id} (Branch: {selected_branch})...")
@@ -1068,6 +1076,10 @@ class FetchManifestDialog(QDialog):
 
         aid_str = str(app_id).strip()
         name = game_name or f"App {aid_str}"
+
+        if self.guided:
+            self._start_assella_flow(aid_str)
+            return
 
         # If in library, redirect to GameLibraryDialog
         if self.parent_window and hasattr(self.parent_window, "game_manager") and self.parent_window.game_manager:
@@ -1336,7 +1348,7 @@ class FetchManifestDialog(QDialog):
                 self.status_label.setText("Error: Could not retrieve valid depot manifests for game.")
                 return
 
-        if parsed_data.get("appid"):
+        if parsed_data.get("appid") and not self.guided:
             appid = str(parsed_data["appid"])
             self.settings.setValue(f"selected_branch/{appid}", branch)
 
@@ -1348,6 +1360,10 @@ class FetchManifestDialog(QDialog):
             if missing_depots:
                 msg += f"\n\nUnavailable depots: {', '.join(str(d) for d in missing_depots)}"
             ThemedMessageBox.warning(self, "No Depots Available", msg)
+            return
+
+        if self.guided:
+            self.manifest_ready.emit((parsed_data, filepath, branch, metadata))
             return
 
         if parsed_data.get("depots"):

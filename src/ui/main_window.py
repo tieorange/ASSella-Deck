@@ -209,6 +209,8 @@ class MainWindow(QMainWindow):
         self._setup_window_properties()
         self._initialize_managers()
         self._setup_ui()
+        from ui.deck_ui.controller import DeckController
+        self._deck_controller = DeckController(self)
         self.game_manager.library_updated.connect(
             lambda: QTimer.singleShot(0, self._sync_home_overview),
             Qt.ConnectionType.QueuedConnection,
@@ -955,7 +957,7 @@ class MainWindow(QMainWindow):
         self.home_overview = DeckHomeOverview(
             open_library=self.open_game_library,
             find_game=self.open_fetch_dialog,
-            open_activity=self.open_status_dialog,
+            open_activity=self.open_activity_dialog,
             refresh_updates=self.force_check_all_updates,
             parent=self.drop_zone_container,
         )
@@ -1129,6 +1131,7 @@ class MainWindow(QMainWindow):
         self.drop_zone_layout.addWidget(self.home_overview)
         self.drop_zone_layout.addWidget(self.status_pager)
         self.drop_zone_layout.addWidget(self.dashboard_widget, 2)
+        self.dashboard_widget.hide()
         self.main_layout.addWidget(self.drop_zone_container, 1)
 
     def _create_progress_section(self) -> None:
@@ -1252,9 +1255,9 @@ class MainWindow(QMainWindow):
         self.refresh_hubcap_stats()
 
     def open_fetch_dialog(self, initial_query: str = "") -> None:
-        from ui.dialogs.fetchmanifest import FetchManifestDialog
+        from ui.deck_ui.install.presentation import DeckInstallFlow
 
-        self.ui_state.fetch_dialog = FetchManifestDialog(self, initial_query=initial_query)
+        self.ui_state.fetch_dialog = DeckInstallFlow(self, initial_query=initial_query)
         self.ui_state.fetch_dialog.exec()
         self.ui_state.fetch_dialog = None
 
@@ -1270,6 +1273,11 @@ class MainWindow(QMainWindow):
 
         dialog = StatusDialog(self)
         dialog.exec()
+
+    def open_activity_dialog(self) -> None:
+        from ui.deck_ui.activity.presentation import ActivityDialog
+
+        ActivityDialog(self).exec()
 
     def open_credits_dialog(self) -> None:
         from ui.dialogs.credits import CreditsDialog
